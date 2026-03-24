@@ -19,13 +19,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up GraalVM
-        uses: graalvm/setup-graalvm@v1
-        with:
-          distribution: graalvm
-          java-version: '21'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          native-image-job-reports: true
+      - name: Set up Gluon GraalVM
+        uses: gluonhq/setup-graalvm@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Maven cache
         uses: actions/cache@v4
