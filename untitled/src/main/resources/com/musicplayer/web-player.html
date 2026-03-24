@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1DB954">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Harmony Pro">
+    <link rel="apple-touch-icon" href="/app-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <title>Harmony Web Player</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg-a: #04111c;
+            --bg-b: #10253f;
+            --panel: rgba(11, 22, 37, 0.82);
+            --panel-soft: rgba(19, 35, 58, 0.94);
+            --line: rgba(255, 255, 255, 0.08);
+            --text: #f4fbff;
+            --muted: #9eb4c8;
+            --accent: #50e3c2;
+            --warm: #ffd166;
+            --rose: #ff8a80;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", system-ui, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(80, 227, 194, 0.18), transparent 34%),
+                radial-gradient(circle at top right, rgba(255, 209, 102, 0.15), transparent 28%),
+                linear-gradient(135deg, var(--bg-a), var(--bg-b));
+        }
+        .shell {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: minmax(290px, 430px) minmax(320px, 1fr);
+            gap: 18px;
+            padding: 18px;
+        }
+        .panel {
+            border-radius: 30px;
+            border: 1px solid var(--line);
+            background: linear-gradient(180deg, var(--panel), var(--panel-soft));
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+            backdrop-filter: blur(14px);
+        }
+        .hero {
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        .hero::before {
+            content: "";
+            position: absolute;
+            inset: auto -60px -60px auto;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(80, 227, 194, 0.20), transparent 64%);
+            pointer-events: none;
+        }
+        .kicker {
+            color: var(--accent);
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+        h1 {
+            margin: 0;
+            font-size: clamp(2.1rem, 4vw, 3.3rem);
+            line-height: 0.96;
+        }
+        .subtle {
+            margin: 10px 0 0;
+            color: var(--muted);
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        .now-playing {
+            padding: 18px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .track-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .track-artist {
+            color: var(--muted);
+        }
+        .mode-chip-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+        .mode-chip {
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+        }
+        .mode-chip.sync {
+            background: rgba(80, 227, 194, 0.14);
+            color: var(--accent);
+        }
+        .mode-chip.local {
+            background: rgba(255, 209, 102, 0.14);
+            color: var(--warm);
+        }
+        .toggle-row,
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .controls { margin-top: 4px; }
+        .pill,
+        .btn {
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .btn {
+            background: linear-gradient(135deg, var(--accent), var(--warm));
+            color: #04111c;
+            padding: 14px 26px;
+            font-size: 1rem;
+            box-shadow: 0 12px 30px rgba(80, 227, 194, 0.24);
+        }
+        .btn.secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
+            box-shadow: none;
+        }
+        .pill {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+            padding: 12px 18px;
+        }
+        .status {
+            color: var(--muted);
+            min-height: 24px;
+        }
+        .transport-card {
+            padding: 16px 18px 18px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .time-row {
+            display: flex;
+            justify-content: space-between;
+            color: var(--muted);
+            font-size: 0.84rem;
+            margin-bottom: 8px;
+        }
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--accent), var(--warm));
+        }
+        audio {
+            width: 100%;
+            margin-top: 12px;
+            accent-color: var(--accent);
+        }
+        .lyrics-panel {
+            padding: 24px 18px 18px;
+            display: flex;
+            flex-direction: column;
+            min-height: 72vh;
+        }
+        .lyrics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .lyrics-title {
+            font-size: 1.55rem;
+            font-weight: 700;
+        }
+        .lyrics-badge {
+            font-size: 0.78rem;
+            color: var(--warm);
+            background: rgba(255, 209, 102, 0.14);
+            padding: 6px 10px;
+            border-radius: 999px;
+        }
+        .lyrics-caption {
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+        .lyrics-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 6px 120px;
+            scroll-behavior: smooth;
+        }
+        .lyric-line {
+            font-size: 1.28rem;
+            line-height: 1.5;
+            font-weight: 700;
+            color: rgba(244, 251, 255, 0.34);
+            padding: 10px 14px;
+            border-radius: 18px;
+            transition: 180ms ease;
+        }
+        .lyric-line.past {
+            color: rgba(158, 180, 200, 0.78);
+        }
+        .lyric-line.active {
+            color: var(--text);
+            background: linear-gradient(90deg, rgba(80, 227, 194, 0.18), rgba(255, 209, 102, 0.12));
+            box-shadow: 0 10px 30px rgba(80, 227, 194, 0.16);
+            transform: scale(1.01);
+        }
+        .lyric-line.upcoming {
+            color: rgba(244, 251, 255, 0.28);
+        }
+        @media (max-width: 860px) {
+            .shell { grid-template-columns: 1fr; }
+            .lyrics-panel { min-height: 54vh; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <section class="panel hero">
+            <div>
+                <div class="kicker">Harmony Web Player</div>
+                <h1>Lyrics that follow your phone.</h1>
+                <p class="subtle">Strict sync keeps this device phase-locked to the host. Turn it off and the lyrics will follow the song timing on this phone instead.</p>
+            </div>
+
+            <div class="now-playing">
+                <div class="track-title" id="trackTitle">Waiting for music</div>
+                <div class="track-artist" id="trackArtist">Join the host session to begin</div>
+                <div class="mode-chip-row">
+                    <div class="mode-chip sync" id="modeChip">Strict host sync</div>
+                    <div class="mode-chip" id="sourceChip">No lyrics yet</div>
+                </div>
+            </div>
+
+            <div class="toggle-row">
+                <label class="pill">
+                    <input type="checkbox" id="syncModeToggle" checked style="margin-right:10px;">
+                    Strict host sync
+                </label>
+                <button class="btn" id="joinBtn">Tap to Tune In</button>
+            </div>
+
+            <div class="controls" id="controlsDiv" style="display:none;">
+                <button class="pill" onclick="fetch('/control?cmd=prev')">Previous</button>
+                <button class="pill" onclick="fetch('/control?cmd=playpause')">Play / Pause</button>
+                <button class="pill" onclick="fetch('/control?cmd=next')">Next</button>
+            </div>
+
+            <div class="status" id="statusField">Waiting for you to tap Join...</div>
+
+            <div class="transport-card">
+                <div class="time-row">
+                    <span id="currentTimeLabel">0:00</span>
+                    <span id="durationLabel">0:00</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <audio id="audioPlayer" controls></audio>
+                <button class="btn secondary" id="unlockBtn" style="display:none; margin-top:12px; width:100%;">Tap to Enable Audio</button>
+            </div>
+        </section>
+
+        <section class="panel lyrics-panel">
+            <div class="lyrics-header">
+                <div class="lyrics-title">Live Lyrics</div>
+                <div class="lyrics-badge" id="lyricsBadge">Waiting</div>
+            </div>
+            <div class="lyrics-caption" id="lyricsCaption">This panel follows the song playing on this device.</div>
+            <div class="lyrics-scroll" id="lyricsScroll">
+                <div class="lyric-line active">Lyrics will appear here when the current track provides them.</div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        const btn = document.getElementById('joinBtn');
+        const status = document.getElementById('statusField');
+        const player = document.getElementById('audioPlayer');
+        const syncToggle = document.getElementById('syncModeToggle');
+        const trackTitle = document.getElementById('trackTitle');
+        const trackArtist = document.getElementById('trackArtist');
+        const lyricsScroll = document.getElementById('lyricsScroll');
+        const lyricsBadge = document.getElementById('lyricsBadge');
+        const lyricsCaption = document.getElementById('lyricsCaption');
+        const modeChip = document.getElementById('modeChip');
+        const sourceChip = document.getElementById('sourceChip');
+        const currentTimeLabel = document.getElementById('currentTimeLabel');
+        const durationLabel = document.getElementById('durationLabel');
+        const progressFill = document.getElementById('progressFill');
+        const unlockBtn = document.getElementById('unlockBtn');
+
+        let connected = false;
+        let lyrics = [];
+        let activeLyricIndex = -1;
+        let currentVideoId = null;
+        let pendingPlayback = false;
+
+        function formatTime(seconds) {
+            const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+            const mins = Math.floor(safe / 60);
+            const secs = safe % 60;
+            return `${mins}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function updateModeUi() {
+            if (syncToggle.checked) {
+                modeChip.innerText = 'Strict host sync';
+                modeChip.className = 'mode-chip sync';
+                lyricsCaption.innerText = 'Lyrics stay aligned to the host playback clock.';
+            } else {
+                modeChip.innerText = 'Phone-local lyric sync';
+                modeChip.className = 'mode-chip local';
+                lyricsCaption.innerText = 'Lyrics follow the playback time on this phone, even if it drifts from the host.';
+            }
+        }
+
+        syncToggle.onchange = () => {
+            if (!syncToggle.checked) {
+                player.playbackRate = 1.0;
+                status.innerText = 'Independent streaming mode';
+            } else {
+                status.innerText = 'Re-syncing to host...';
+            }
+            updateModeUi();
+            syncLyricsTo(player.currentTime * 1000);
+        };
+
+        updateModeUi();
+
+        player.addEventListener('playing', () => {
+            pendingPlayback = false;
+            unlockBtn.style.display = 'none';
+            status.innerText = syncToggle.checked ? 'Playing host music...' : 'Playing on this phone';
+        });
+
+        player.addEventListener('timeupdate', () => {
+            currentTimeLabel.innerText = formatTime(player.currentTime);
+            durationLabel.innerText = formatTime(player.duration);
+            const total = Number.isFinite(player.duration) && player.duration > 0 ? player.duration : 0;
+            progressFill.style.width = total ? `${(player.currentTime / total) * 100}%` : '0%';
+            syncLyricsTo(player.currentTime * 1000);
+        });
+
+        player.addEventListener('canplay', () => {
+            if (pendingPlayback) {
+                attemptPlayback();
+            }
+        });
+
+        unlockBtn.onclick = () => {
+            pendingPlayback = true;
+            attemptPlayback();
+        };
+
+        function renderPlaceholder(text, badgeText = 'Waiting') {
+            lyrics = [];
+            activeLyricIndex = -1;
+            lyricsBadge.innerText = badgeText;
+            sourceChip.innerText = badgeText;
+            lyricsScroll.innerHTML = `<div class="lyric-line active">${text}</div>`;
+        }
+
+        function renderLyrics(data) {
+            trackTitle.innerText = data.title || 'Waiting for music';
+            trackArtist.innerText = data.artist || 'Host metadata will appear here';
+            lyricsBadge.innerText = data.synced ? `Synced • ${data.source}` : `${data.source}`;
+            sourceChip.innerText = data.synced ? 'Timed lyrics loaded' : 'Lyrics loaded';
+
+            if (!data.lines || !data.lines.length) {
+                renderPlaceholder('Could not match lyrics from the current source for this song yet.', 'Lyrics unavailable');
+                return;
+            }
+
+            lyrics = data.lines;
+            activeLyricIndex = -1;
+            lyricsScroll.innerHTML = '';
+
+            for (const line of lyrics) {
+                const node = document.createElement('div');
+                node.className = 'lyric-line upcoming';
+                node.textContent = line.text;
+                lyricsScroll.appendChild(node);
+            }
+
+            syncLyricsTo(player.currentTime * 1000);
+        }
+
+        function syncLyricsTo(currentMs) {
+            if (!lyrics.length) return;
+
+            let nextIndex = -1;
+            for (let i = 0; i < lyrics.length; i++) {
+                if (lyrics[i].timeMs <= currentMs) nextIndex = i;
+                else break;
+            }
+
+            if (nextIndex === activeLyricIndex) return;
+            activeLyricIndex = nextIndex;
+
+            const nodes = lyricsScroll.querySelectorAll('.lyric-line');
+            nodes.forEach((node, index) => {
+                node.classList.remove('past', 'active', 'upcoming');
+                if (activeLyricIndex >= 0 && index < activeLyricIndex) node.classList.add('past');
+                else if (index === activeLyricIndex) node.classList.add('active');
+                else node.classList.add('upcoming');
+            });
+
+            if (activeLyricIndex >= 0 && nodes[activeLyricIndex]) {
+                nodes[activeLyricIndex].scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        }
+
+        async function loadLyrics() {
+            try {
+                const response = await fetch('/lyrics?t=' + Date.now());
+                const data = await response.json();
+                renderLyrics(data);
+            } catch (err) {
+                renderPlaceholder('Unable to load lyrics from the host right now.', 'Error');
+            }
+        }
+
+        function attemptPlayback() {
+            player.play().then(() => {
+                unlockBtn.style.display = 'none';
+            }).catch(() => {
+                unlockBtn.style.display = 'block';
+                status.innerText = 'Tap "Enable Audio" to let this browser start the stream.';
+            });
+        }
+
+        btn.onclick = () => {
+            if (connected) return;
+            connected = true;
+            btn.style.display = 'none';
+            document.getElementById('controlsDiv').style.display = 'flex';
+            status.innerText = 'Connecting to host audio...';
+            loadLyrics();
+
+            const source = new EventSource('/events');
+            source.onmessage = (e) => {
+                const parts = e.data.split(' ');
+                const cmd = parts[0];
+
+                try {
+                    if (cmd === 'PLAY') {
+                        const incomingVideoId = parts[1];
+                        const receivedTargetTime = parseInt(parts[3], 10) / 1000;
+                        const receivedAt = Date.now();
+                        loadLyrics();
+
+                        if (currentVideoId !== incomingVideoId) {
+                            currentVideoId = incomingVideoId;
+                            player.src = `${parts[2]}?t=${Date.now()}`;
+                            player.load();
+                            player.onloadedmetadata = () => {
+                                if (syncToggle.checked) {
+                                    const timePassed = (Date.now() - receivedAt) / 1000;
+                                    player.currentTime = receivedTargetTime + timePassed;
+                                } else {
+                                    player.currentTime = 0;
+                                }
+                                player.onloadedmetadata = null;
+                            };
+                            pendingPlayback = true;
+                            attemptPlayback();
+                        } else {
+                            if (syncToggle.checked && Math.abs(player.currentTime - receivedTargetTime) > 0.5) {
+                                player.currentTime = receivedTargetTime;
+                                status.innerText = 'Synced and playing';
+                            } else if (!syncToggle.checked) {
+                                status.innerText = 'Local playback keeps lyrics in step with this phone';
+                            }
+                            pendingPlayback = true;
+                            attemptPlayback();
+                        }
+                    } else if (cmd === 'PAUSE' && syncToggle.checked) {
+                        player.pause();
+                        pendingPlayback = false;
+                        status.innerText = 'Host paused';
+                    } else if (cmd === 'RESUME' && syncToggle.checked) {
+                        if (parts[1]) player.currentTime = parseInt(parts[1], 10) / 1000;
+                        pendingPlayback = true;
+                        attemptPlayback();
+                        status.innerText = 'Resumed';
+                    } else if (cmd === 'SEEK' && syncToggle.checked) {
+                        player.currentTime = parseInt(parts[1], 10) / 1000;
+                    } else if (cmd === 'SYNC' && syncToggle.checked) {
+                        const hostTime = parseInt(parts[1], 10) / 1000;
+                        const drift = hostTime - player.currentTime;
+
+                        if (Math.abs(drift) > 1.5) {
+                            player.currentTime = hostTime;
+                            player.playbackRate = 1.0;
+                        } else if (drift > 0.05) {
+                            player.playbackRate = 1.15;
+                        } else if (drift < -0.05) {
+                            player.playbackRate = 0.85;
+                        } else {
+                            player.playbackRate = 1.0;
+                        }
+                    } else if (cmd === 'META' || cmd === 'LYRICS') {
+                        loadLyrics();
+                    } else if (cmd === 'STOP') {
+                        if (syncToggle.checked) {
+                            player.pause();
+                            pendingPlayback = false;
+                            status.innerText = 'Host stopped';
+                            renderPlaceholder('Waiting for the next track from the host.', 'Stopped');
+                        } else {
+                            status.innerText = 'Host stopped, but local playback and lyrics stay tied to this phone until it ends.';
+                        }
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            };
+
+            source.onerror = () => {
+                status.innerText = 'Disconnected. Trying to reconnect...';
+            };
+        };
+        
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Harmony PWA: Service Worker Active'))
+                    .catch(err => console.log('Harmony PWA: SW Error', err));
+            });
+        }
+    </script>
+</body>
+</html>

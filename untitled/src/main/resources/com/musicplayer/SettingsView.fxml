@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Slider?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane prefHeight="680.0" prefWidth="860.0" styleClass="settings-root"
+            xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+
+    <top>
+        <VBox styleClass="settings-hero" spacing="10">
+            <padding>
+                <Insets top="24.0" right="28.0" bottom="22.0" left="28.0" />
+            </padding>
+            <Label text="Tune Harmony Pro" styleClass="settings-hero-title" />
+            <Label text="Audio, interface, playback, and storage controls in one place. Changes apply across Windows and Android builds."
+                   wrapText="true" styleClass="settings-hero-copy" />
+        </VBox>
+    </top>
+
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE" styleClass="settings-tabs">
+            <tabs>
+                <Tab text="Audio">
+                    <content>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="settings-scroll-pane">
+                            <content>
+                                <VBox styleClass="settings-page" spacing="18">
+                                    <padding>
+                                        <Insets top="22.0" right="22.0" bottom="22.0" left="22.0" />
+                                    </padding>
+
+                                    <VBox styleClass="settings-card" spacing="14">
+                                        <Label text="Playback feel" styleClass="settings-card-title" />
+                                        <Label text="Set the default output profile for every session."
+                                               wrapText="true" styleClass="settings-card-copy" />
+
+                                        <HBox styleClass="settings-row" alignment="CENTER_LEFT" spacing="16">
+                                            <VBox spacing="4">
+                                                <Label text="Default volume" styleClass="settings-label" />
+                                                <Label text="Choose the starting volume for new sessions." styleClass="settings-help" />
+                                            </VBox>
+                                            <Region HBox.hgrow="ALWAYS" />
+                                            <Slider fx:id="volumeSlider" prefWidth="280.0" />
+                                        </HBox>
+
+                                        <HBox styleClass="settings-row" alignment="CENTER_LEFT" spacing="16">
+                                            <VBox spacing="4">
+                                                <Label text="Audio quality" styleClass="settings-label" />
+                                                <Label text="Trade stream quality against speed and data use." styleClass="settings-help" />
+                                            </VBox>
+                                            <Region HBox.hgrow="ALWAYS" />
+                                            <ComboBox fx:id="audioQualityCombo" prefWidth="170.0" />
+                                        </HBox>
+                                    </VBox>
+
+                                    <VBox styleClass="settings-card" spacing="12">
+                                        <Label text="Automation" styleClass="settings-card-title" />
+                                        <Label text="Let the player handle transitions for you."
+                                               wrapText="true" styleClass="settings-card-copy" />
+                                        <CheckBox fx:id="autoplayCheckbox" text="Auto-play the next song in queue" styleClass="settings-check" />
+                                        <CheckBox fx:id="crossfadeCheckbox" text="Blend transitions between songs" styleClass="settings-check" />
+                                    </VBox>
+                                </VBox>
+                            </content>
+                        </ScrollPane>
+                    </content>
+                </Tab>
+
+                <Tab text="Interface">
+                    <content>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="settings-scroll-pane">
+                            <content>
+                                <VBox styleClass="settings-page" spacing="18">
+                                    <padding>
+                                        <Insets top="22.0" right="22.0" bottom="22.0" left="22.0" />
+                                    </padding>
+
+                                    <VBox styleClass="settings-card" spacing="14">
+                                        <Label text="Visual theme" styleClass="settings-card-title" />
+                                        <Label text="Adjust the app look and readability for your device."
+                                               wrapText="true" styleClass="settings-card-copy" />
+
+                                        <HBox styleClass="settings-row" alignment="CENTER_LEFT" spacing="16">
+                                            <VBox spacing="4">
+                                                <Label text="Theme mode" styleClass="settings-label" />
+                                                <Label text="Choose a fixed theme or let the app decide." styleClass="settings-help" />
+                                            </VBox>
+                                            <Region HBox.hgrow="ALWAYS" />
+                                            <ComboBox fx:id="themeCombo" prefWidth="170.0" />
+                                        </HBox>
+
+                                        <HBox styleClass="settings-row" alignment="CENTER_LEFT" spacing="16">
+                                            <VBox spacing="4">
+                                                <Label text="Font size" styleClass="settings-label" />
+                                                <Label text="A restart may be needed for every view to refresh." styleClass="settings-help" />
+                                            </VBox>
+                                            <Region HBox.hgrow="ALWAYS" />
+                                            <Spinner fx:id="fontSizeSpinner" editable="true" prefWidth="100.0" />
+                                        </HBox>
+                                    </VBox>
+
+                                    <VBox styleClass="settings-card" spacing="12">
+                                        <Label text="Presentation" styleClass="settings-card-title" />
+                                        <Label text="Control visual polish and artwork behavior."
+                                               wrapText="true" styleClass="settings-card-copy" />
+                                        <CheckBox fx:id="showAlbumArtCheckbox" text="Show album art whenever available" styleClass="settings-check" />
+                                        <CheckBox fx:id="animationsCheckbox" text="Keep interface animations enabled" styleClass="settings-check" />
+                                    </VBox>
+                                </VBox>
+                            </content>
+                        </ScrollPane>
+                    </content>
+                </Tab>
+
+                <Tab text="Playback">
+                    <content>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="settings-scroll-pane">
+                            <content>
+                                <VBox styleClass="settings-page" spacing="18">
+                                    <padding>
+                                        <Insets top="22.0" right="22.0" bottom="22.0" left="22.0" />
+                                    </padding>
+
+                                    <VBox styleClass="settings-card" spacing="12">
+                                        <Label text="Repeat behavior" styleClass="settings-card-title" />
+                                        <Label text="Decide how queues behave once a track finishes."
+                                               wrapText="true" styleClass="settings-card-copy" />
+                                        <VBox spacing="10">
+                                            <fx:define>
+                                                <ToggleGroup fx:id="repeatGroup" />
+                                            </fx:define>
+                                            <RadioButton fx:id="repeatNone" text="Do not repeat automatically" toggleGroup="$repeatGroup" styleClass="settings-radio" />
+                                            <RadioButton fx:id="repeatOne" text="Repeat the current song" toggleGroup="$repeatGroup" styleClass="settings-radio" />
+                                            <RadioButton fx:id="repeatAll" text="Repeat the entire queue" toggleGroup="$repeatGroup" styleClass="settings-radio" />
+                                        </VBox>
+                                    </VBox>
+
+                                    <VBox styleClass="settings-card" spacing="12">
+                                        <Label text="Queue intelligence" styleClass="settings-card-title" />
+                                        <Label text="Choose how much the player should help keep music moving."
+                                               wrapText="true" styleClass="settings-card-copy" />
+                                        <CheckBox fx:id="shuffleCheckbox" text="Shuffle the playlist by default" styleClass="settings-check" />
+                                        <CheckBox fx:id="resumePlaybackCheckbox" text="Resume playback when the app starts" styleClass="settings-check" />
+                                    </VBox>
+                                </VBox>
+                            </content>
+                        </ScrollPane>
+                    </content>
+                </Tab>
+
+                <Tab text="YouTube">
+                    <content>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="settings-scroll-pane">
+                            <content>
+                                <VBox styleClass="settings-page" spacing="18">
+                                    <padding>
+                                        <Insets top="22.0" right="22.0" bottom="22.0" left="22.0" />
+                                    </padding>
+
+                                    <VBox styleClass="settings-card" spacing="14">
+                                        <Label text="Search tuning" styleClass="settings-card-title" />
+                                        <Label text="Shape how discovery behaves when you search for tracks."
+                                               wrapText="true" styleClass="settings-card-copy" />
+                                        <HBox styleClass="settings-row" alignment="CENTER_LEFT" spacing="16">
+                                            <VBox spacing="4">
+                                                <Label text="Max search results" styleClass="settings-label" />
+                                                <Label text="More results improve discovery but can feel heavier on mobile." styleClass="settings-help" />
+                                            </VBox>
+                                            <Region HBox.hgrow="ALWAYS" />
+                                            <Spinner fx:id="maxResultsSpinner" editable="true" prefWidth="100.0" />
+                                        </HBox>
+                                        <CheckBox fx:id="autoAddCheckbox" text="Automatically add searched songs to the queue" styleClass="settings-check" />
+                                    </VBox>
+                                </VBox>
+                            </content>
+                        </ScrollPane>
+                    </content>
+                </Tab>
+
+                <Tab text="Storage">
+                    <content>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="settings-scroll-pane">
+                            <content>
+                                <VBox styleClass="settings-page" spacing="18">
+                                    <padding>
+                                        <Insets top="22.0" right="22.0" bottom="22.0" left="22.0" />
+                                    </padding>
+
+                                    <VBox styleClass="settings-card" spacing="14">
+                                        <Label text="Cache policy" styleClass="settings-card-title" />
+                                        <Label text="Keep the app responsive while controlling how much local space it uses."
+                                               wrapText="true" styleClass="settings-card-copy" />
+                                        <HBox styleClass="settings-row" alignment="CENTER_LEFT" spacing="16">
+                                            <VBox spacing="4">
+                                                <Label text="Cache size limit" styleClass="settings-label" />
+                                                <Label text="Approximate storage budget reserved for cache data." styleClass="settings-help" />
+                                            </VBox>
+                                            <Region HBox.hgrow="ALWAYS" />
+                                            <Spinner fx:id="cacheSizeSpinner" editable="true" prefWidth="120.0" />
+                                        </HBox>
+                                        <CheckBox fx:id="autoClearCacheCheckbox" text="Clear cache automatically when the app exits" styleClass="settings-check" />
+                                    </VBox>
+
+                                    <VBox styleClass="settings-card settings-card-danger" spacing="12">
+                                        <Label text="Cleanup" styleClass="settings-card-title" />
+                                        <Label text="Use this if cached data looks stale or storage is getting tight."
+                                               wrapText="true" styleClass="settings-card-copy" />
+                                        <Button fx:id="clearCacheButton" onAction="#handleClearCache" text="Clear Cache Now" styleClass="danger-button" />
+                                    </VBox>
+                                </VBox>
+                            </content>
+                        </ScrollPane>
+                    </content>
+                </Tab>
+
+                <Tab text="Account">
+                    <content>
+                        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="settings-scroll-pane">
+                            <content>
+                                <VBox styleClass="settings-page" spacing="18">
+                                    <padding>
+                                        <Insets top="22.0" right="22.0" bottom="22.0" left="22.0" />
+                                    </padding>
+                                    <VBox fx:id="accountContentBox" styleClass="settings-card account-card" spacing="12" />
+                                </VBox>
+                            </content>
+                        </ScrollPane>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER_RIGHT" spacing="12.0" styleClass="settings-footer">
+            <padding>
+                <Insets top="18.0" right="28.0" bottom="22.0" left="28.0" />
+            </padding>
+            <Region HBox.hgrow="ALWAYS" />
+            <Label text="Settings are saved locally on this device." styleClass="settings-footer-note" />
+            <Region minWidth="18.0" />
+            <Button fx:id="resetButton" onAction="#handleReset" text="Reset" styleClass="control-button" />
+            <Button fx:id="cancelButton" onAction="#handleCancel" text="Cancel" styleClass="control-button" />
+            <Button fx:id="saveButton" onAction="#handleSave" text="Save Changes" styleClass="add-button" />
+        </HBox>
+    </bottom>
+
+</BorderPane>

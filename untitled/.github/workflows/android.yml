@@ -1,0 +1,71 @@
+name: Android Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          distribution: graalvm
+          java-version: '21'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-job-reports: true
+
+      - name: Set up Maven cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gluon
+          key: ${{ runner.os }}-android-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-android-
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            libasound2-dev \
+            libgl-dev \
+            libegl1-mesa-dev \
+            libx11-dev \
+            libxtst-dev \
+            unzip \
+            zip \
+            curl
+
+      - name: Expose GraalVM for Gluon
+        run: |
+          echo "GRAALVM_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
+          java -version
+          native-image --version
+
+      - name: Build Android package
+        run: mvn -B -Pandroid -DskipTests clean gluonfx:build gluonfx:package
+
+      - name: Upload Android artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harmony-player-android
+          path: |
+            target/**/*.apk
+            target/**/*.aab
+            target/gluonfx/**/log/*
+          if-no-files-found: warn

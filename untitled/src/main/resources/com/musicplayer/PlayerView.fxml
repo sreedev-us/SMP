@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Slider?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+
+<StackPane fx:id="appRoot" styleClass="main-container"
+           xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+
+    <BorderPane styleClass="main-container">
+        <top>
+            <HBox styleClass="header-bar" alignment="CENTER_LEFT" spacing="12">
+                <padding><Insets left="18" right="18" top="10" bottom="10" /></padding>
+
+                <Button fx:id="menuButton" text="Browse" styleClass="menu-toggle-button"
+                        onAction="#handleToggleSidebar" visible="false" managed="false" />
+
+                <Text text="HP" styleClass="header-logo" />
+                <Text text="Harmony Pro" styleClass="header-title" />
+                <HBox HBox.hgrow="ALWAYS" />
+                <Label fx:id="userInfoLabel" text="Not Logged In" styleClass="user-info-label" />
+
+                <Button fx:id="hostButton" text="Start Sync" styleClass="icon-button"
+                        onAction="#handleHostSession" />
+                <Button fx:id="joinButton" text="Connect" styleClass="icon-button"
+                        onAction="#handleJoinSession" />
+                <TextField fx:id="publicLinkField" visible="false" managed="false" editable="false"
+                           promptText="Generating link..." style="-fx-pref-width: 250px; -fx-background-color: #2a2a2a; -fx-text-fill: white;" />
+                <Label fx:id="peerCountLabel" text="" styleClass="user-info-label" />
+
+                <Button text="Tune" styleClass="icon-button" onAction="#handleOpenSettings" />
+            </HBox>
+        </top>
+
+        <left>
+            <VBox fx:id="sidebar" styleClass="sidebar" minWidth="260" maxWidth="340" prefWidth="310" spacing="12">
+                <padding><Insets top="24" left="18" right="18" bottom="24" /></padding>
+
+                <Label text="SEARCH" styleClass="section-label" />
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <TextField fx:id="searchField" promptText="Search YouTube..."
+                               styleClass="search-field" HBox.hgrow="ALWAYS"
+                               onAction="#handleSearch" />
+                    <Button text="Go" styleClass="search-btn" onAction="#handleSearch" />
+                </HBox>
+
+                <ListView fx:id="searchResultsList" styleClass="results-list"
+                          VBox.vgrow="ALWAYS" minHeight="120" />
+
+                <Button text="Add without Playing" styleClass="add-button"
+                        maxWidth="Infinity" onAction="#handleAddSearchResult" />
+
+                <VBox minHeight="8" />
+
+                <Label text="YOUR QUEUE" styleClass="section-label" />
+                <ListView fx:id="playlistView" styleClass="playlist-view"
+                          VBox.vgrow="ALWAYS" minHeight="80" />
+                <HBox spacing="8">
+                    <Button text="Remove" styleClass="control-button" HBox.hgrow="ALWAYS"
+                            onAction="#handleRemoveFromPlaylist" />
+                    <Button text="Clear All" styleClass="control-button" HBox.hgrow="ALWAYS"
+                            onAction="#handleClearPlaylist" />
+                </HBox>
+            </VBox>
+        </left>
+
+        <center>
+            <HBox styleClass="center-panel" alignment="CENTER" spacing="24">
+                <padding><Insets top="28" bottom="28" left="28" right="28" /></padding>
+
+                <VBox styleClass="now-playing-card" alignment="CENTER" spacing="22" HBox.hgrow="ALWAYS">
+                    <StackPane>
+                        <ImageView fx:id="albumArtView"
+                                   fitHeight="280.0" fitWidth="280.0"
+                                   preserveRatio="true" styleClass="album-art" />
+                        <ProgressIndicator fx:id="loadingIndicator" prefWidth="60" prefHeight="60"
+                                           styleClass="loading-indicator" visible="false" />
+                    </StackPane>
+
+                    <Label fx:id="songTitleLabel" text="No song selected"
+                           styleClass="song-title-label" wrapText="true" maxWidth="460" />
+                    <Label fx:id="artistLabel" text="Search for a song and click to play"
+                           styleClass="artist-label" />
+                </VBox>
+
+                <VBox styleClass="lyrics-card" spacing="16" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Label text="LIVE LYRICS" styleClass="lyrics-section-label" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Label fx:id="lyricsSourceLabel" text="Waiting for a song" styleClass="lyrics-source-label" />
+                    </HBox>
+                    <Label fx:id="lyricsHeadlineLabel" text="Lyrics will appear here" styleClass="lyrics-headline-label" wrapText="true" />
+                    <ScrollPane fx:id="lyricsScrollPane" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="NEVER"
+                                pannable="true" styleClass="lyrics-scroll-pane" VBox.vgrow="ALWAYS">
+                        <content>
+                            <VBox fx:id="lyricsContainer" styleClass="lyrics-container" spacing="12" />
+                        </content>
+                    </ScrollPane>
+                </VBox>
+            </HBox>
+        </center>
+
+        <bottom>
+            <VBox styleClass="player-controls" alignment="CENTER" spacing="12">
+                <padding><Insets top="14" bottom="18" left="28" right="28" /></padding>
+
+                <HBox alignment="CENTER" spacing="12">
+                    <Label fx:id="currentTimeLabel" text="0:00" styleClass="time-label" />
+                    <Slider fx:id="progressSlider" styleClass="progress-slider" HBox.hgrow="ALWAYS" />
+                    <Label fx:id="totalTimeLabel" text="0:00" styleClass="time-label" />
+                </HBox>
+
+                <HBox alignment="CENTER" spacing="16">
+                    <Button fx:id="shuffleButton" text="Mix" styleClass="icon-button"
+                            onAction="#handleToggleShuffle" />
+
+                    <Button fx:id="autoRadioButton" text="Auto" styleClass="icon-button"
+                            onAction="#handleToggleAutoRadio" />
+
+                    <Button text="&lt;&lt;" styleClass="icon-button" onAction="#handlePrevious" />
+                    <Button fx:id="playPauseButton" text=">" styleClass="play-pause-button"
+                            onAction="#handlePlayPause" />
+                    <Button text="&gt;&gt;" styleClass="icon-button" onAction="#handleNext" />
+
+                    <Button fx:id="repeatButton" text="Loop" styleClass="icon-button"
+                            onAction="#handleToggleRepeat" />
+
+                    <HBox HBox.hgrow="ALWAYS" />
+
+                    <Label text="Volume" styleClass="volume-icon" />
+                    <Slider fx:id="volumeSlider" styleClass="volume-slider" prefWidth="130" />
+                </HBox>
+
+                <Label fx:id="statusLabel" text="Welcome to Harmony Pro!"
+                       styleClass="status-label" />
+            </VBox>
+        </bottom>
+    </BorderPane>
+
+    <StackPane fx:id="settingsOverlay" styleClass="overlay-backdrop"
+               visible="false" managed="false" onMouseClicked="#handleDismissSettingsOverlay">
+        <VBox fx:id="settingsContainer" styleClass="settings-shell"
+              onMouseClicked="#handleConsumeOverlayClick" maxWidth="900" maxHeight="700" />
+    </StackPane>
+
+</StackPane>

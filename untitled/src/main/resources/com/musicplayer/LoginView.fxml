@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+
+<VBox alignment="TOP_CENTER" maxHeight="600.0" maxWidth="450.0" prefHeight="600.0" prefWidth="450.0"
+      spacing="10.0" styleClass="main-container" xmlns="http://javafx.com/javafx/11" xmlns:fx="http://javafx.com/fxml/1">
+
+    <padding>
+        <Insets bottom="30.0" left="40.0" right="40.0" top="30.0" />
+    </padding>
+
+    <VBox alignment="TOP_RIGHT" prefHeight="20.0">
+        <Button fx:id="closeButton" onAction="#handleClose" styleClass="close-button" text="X" />
+    </VBox>
+
+    <Text styleClass="logo-icon" text="HP" />
+
+    <Label styleClass="title-label" text="Harmony Pro" />
+
+    <Label styleClass="tagline-label" text="Professional Music Experience" />
+
+    <VBox prefHeight="20.0" />
+
+    <VBox alignment="CENTER_LEFT" spacing="8.0" styleClass="benefits-box">
+        <Label styleClass="benefit-label" text="Stream millions of songs from YouTube" />
+        <Label styleClass="benefit-label" text="Access your personalized playlists" />
+        <Label styleClass="benefit-label" text="Search and discover new music" />
+        <Label styleClass="benefit-label" text="Professional music experience" />
+    </VBox>
+
+    <VBox VBox.vgrow="ALWAYS" />
+
+    <Button fx:id="googleLoginBtn" minHeight="50.0" onAction="#handleGoogleLogin"
+            prefWidth="300.0" styleClass="login-button" text="Continue with Google" />
+
+    <Label fx:id="statusLabel" styleClass="status-label" text="Please sign in to continue." />
+
+    <Text styleClass="privacy-text"
+          text="By continuing, you agree to our Terms of Service and Privacy Policy" />
+
+    <Hyperlink onAction="#handleDemoLogin" styleClass="demo-link" text="or Continue in Demo Mode" />
+
+    <Text styleClass="privacy-text"
+          text="By continuing, you agree to our Terms of Service and Privacy Policy" />
+
+</VBox>

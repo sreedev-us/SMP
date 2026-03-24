@@ -1,0 +1,1093 @@
+package com.musicplayer;
+
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.stage.FileChooser;
+import javafx.util.Duration;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import javafx.scene.control.TextInputDialog;
+
+public class FxMusicPlayer {
+
+    // --- Services ---
+    private final AuthSystem auth;
+    private final SettingsManager settings;
+    private final AudioPlayer audioPlayer;
+    private YouTubeService youtubeService = null;
+    private final CacheManager cache;
+    private final LanSyncManager lanSync = new LanSyncManager();
+    private final LyricsService lyricsService = new LyricsService();
+
+    // --- FXML UI Components ---
+    @FXML private Label userInfoLabel;
+    @FXML private TextField searchField;
+    @FXML private ListView<SongData> searchResultsList;
+    @FXML private ListView<SongData> playlistView;
+    @FXML private ImageView albumArtView;
+    @FXML private Label songTitleLabel;
+    @FXML private Label artistLabel;
+    @FXML private Label currentTimeLabel;
+    @FXML private Label totalTimeLabel;
+    @FXML private Slider progressSlider;
+    @FXML private Button playPauseButton;
+    @FXML private Slider volumeSlider;
+    @FXML private Label statusLabel;
+    @FXML private Button shuffleButton;
+    @FXML private Button repeatButton;
+    @FXML private Button autoRadioButton;
+    @FXML private ProgressIndicator loadingIndicator;
+    @FXML private Button hostButton;
+    @FXML private Button joinButton;
+    @FXML private TextField publicLinkField;
+    @FXML private Label peerCountLabel;
+    @FXML private ScrollPane lyricsScrollPane;
+    @FXML private VBox lyricsContainer;
+    @FXML private Label lyricsHeadlineLabel;
+    @FXML private Label lyricsSourceLabel;
+    @FXML private VBox sidebar;
+    @FXML private Button menuButton;
+    @FXML private StackPane appRoot;
+    @FXML private StackPane settingsOverlay;
+    @FXML private VBox settingsContainer;
+
+    // --- State ---
+    private final ObservableList<SongData> playlist = FXCollections.observableArrayList();
+    private int currentSongIndex = -1;
+    private boolean isPlaying = false;
+    private boolean isPaused = false;
+    private boolean isDraggingSlider = false;
+    private boolean shuffleEnabled = false;
+    private boolean repeatEnabled = false;
+    private boolean autoRadioEnabled = false;
+    private Timeline progressTimer;
+    private Image defaultAlbumArt;
+    private long lastSyncTime = 0;
+    private List<LyricsLine> currentLyrics = List.of();
+    private final List<Label> lyricLineLabels = new ArrayList<>();
+    private int currentLyricIndex = -1;
+    private boolean currentLyricsSynced = false;
+    private long lyricsRequestSequence = 0;
+
+    public FxMusicPlayer(AuthSystem auth, SettingsManager settings) {
+        this.auth = auth;
+        this.settings = settings;
+        this.cache = new CacheManager();
+        this.audioPlayer = new AudioPlayer();
+
+        // Auto-advance when a track ends
+        this.audioPlayer.setOnEndOfMedia(() -> Platform.runLater(this::handleNext));
+
+        if (auth != null && auth.isLoggedIn()) {
+            try {
+                this.youtubeService = new YouTubeService(auth);
+            } catch (Exception e) {
+                System.err.println("Failed to init YouTube Service: " + e.getMessage());
+            }
+        }
+
+        // Wire LAN sync callbacks
+        lanSync.setListener(new LanSyncListener() {
+            @Override public void onPlay(String videoId, String audioUrl, long startMs) {
+                Platform.runLater(() -> {
+                    try {
+                        audioPlayer.play(audioUrl);
+                        audioPlayer.seek(startMs);
+                        onPlaybackStarted();
+                        updateStatus("LAN: Playing from host");
+                    } catch (Exception e) {
+                        updateStatus("LAN playback error: " + e.getMessage());
+                    }
+                });
+            }
+            @Override public void onPause(long posMs) {
+                Platform.runLater(() -> { audioPlayer.pause();         updateStatus("Paused"); });
+            }
+            @Override public void onResume(long posMs) {
+                Platform.runLater(() -> { audioPlayer.resume(); updateStatus("LAN: Resumed"); });
+            }
+            @Override public void onSeek(long posMs) {
+                Platform.runLater(() -> audioPlayer.seek(posMs));
+            }
+            @Override public void onStop() {
+                Platform.runLater(() -> { stopMusic(); updateStatus("LAN: Host stopped"); });
+            }
+            @Override public void onClientConnected(String name, int count) {
+                Platform.runLater(() -> updatePeerLabel(count));
+            }
+            @Override public void onClientDisconnected(String name, int count) {
+                Platform.runLater(() -> updatePeerLabel(count));
+            }
+            @Override public void onSessionEnded() {
+                Platform.runLater(() -> {
+                    updateStatus("LAN session ended.");
+                    updateToggleButtonStyle(hostButton, false);
+                    updateToggleButtonStyle(joinButton, false);
+                    if (peerCountLabel != null) peerCountLabel.setText("");
+                });
+            }
+            @Override public void onRemoteCommand(String cmd) {
+                Platform.runLater(() -> {
+                    switch (cmd) {
+                        case "playpause": handlePlayPause(); break;
+                        case "next": handleNext(); break;
+                        case "prev": handlePrevious(); break;
+                    }
+                });
+            }
+        });
+    }
+
+    @FXML
+    public void initialize() {
+        // Bind playlist
+        playlistView.setItems(playlist);
+        configureListView(playlistView);
+        configureListView(searchResultsList);
+
+        // Volume
+        volumeSlider.setValue(settings.getInt("audio.volume", 70));
+        volumeSlider.valueProperty().addListener((obs, o, n) -> setVolume(n.intValue()));
+        setVolume((int) volumeSlider.getValue());
+
+        // Progress tracking
+        setupProgressTimer();
+        setupProgressSlider();
+
+        // User info
+        if (auth != null && auth.isLoggedIn()) {
+            if (auth.isRealLogin()) {
+                userInfoLabel.setText("User: " + auth.getCurrentUser());
+            } else {
+                userInfoLabel.setText("Guest Mode (Limited API)");
+                updateStatus("Guest Mode: Using yt-dlp for searches.");
+            }
+        }
+
+        // Double-click to play from playlist
+        playlistView.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) handlePlaylistDoubleClick();
+        });
+
+        // Default album art
+        try {
+            defaultAlbumArt = new Image(
+                getClass().getResourceAsStream("/com/musicplayer/default-album.png"));
+        } catch (Exception e) {
+            defaultAlbumArt = null;
+        }
+        setAlbumArt(null);
+
+        // Hide loading spinner initially
+        if (loadingIndicator != null) loadingIndicator.setVisible(false);
+        renderLyricsPlaceholder("Pick a song to light up the lyrics panel.", "Waiting for track");
+        updatePlayPauseLabel();
+        updateSessionButtonLabels();
+
+        // Shuffle / Repeat / Auto Radio button initial style
+        updateToggleButtonStyle(shuffleButton, shuffleEnabled);
+        updateToggleButtonStyle(repeatButton, repeatEnabled);
+        updateToggleButtonStyle(autoRadioButton, autoRadioEnabled);
+
+        // Single-click on a search result adds it to the queue and plays it immediately
+        searchResultsList.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 1) {
+                SongData song = searchResultsList.getSelectionModel().getSelectedItem();
+                if (song != null) addToQueueAndPlay(song);
+            }
+        });
+
+        // Setup responsive layout listener (runs after scene is created)
+        Platform.runLater(this::setupResponsiveListener);
+    }
+
+    private void setupResponsiveListener() {
+        // Assuming 'sidebar' and 'menuButton' are FXML components declared elsewhere
+        // For this code to compile, you would need to add:
+        // @FXML private VBox sidebar;
+        // @FXML private Button menuButton;
+        if (sidebar == null || sidebar.getScene() == null) return;
+        
+        sidebar.getScene().widthProperty().addListener((obs, oldVal, newVal) -> {
+            boolean isMobile = newVal.doubleValue() < 850;
+            updateResponsiveUI(isMobile);
+        });
+        
+        // Initial check
+        updateResponsiveUI(sidebar.getScene().getWidth() < 850);
+    }
+
+    private void updateResponsiveUI(boolean mobile) {
+        // Assuming 'sidebar' and 'menuButton' are FXML components declared elsewhere
+        // For this code to compile, you would need to add:
+        // @FXML private VBox sidebar;
+        // @FXML private Button menuButton;
+        if (sidebar.getScene() == null) return;
+        
+        if (mobile) {
+            if (!sidebar.getScene().getRoot().getStyleClass().contains("mobile")) {
+                sidebar.getScene().getRoot().getStyleClass().add("mobile");
+            }
+            menuButton.setVisible(true);
+            menuButton.setManaged(true);
+            sidebar.setVisible(false);
+            sidebar.setManaged(false);
+        } else {
+            sidebar.getScene().getRoot().getStyleClass().remove("mobile");
+            menuButton.setVisible(false);
+            menuButton.setManaged(false);
+            sidebar.setVisible(true);
+            sidebar.setManaged(true);
+        }
+    }
+
+    @FXML
+    private void handleToggleSidebar() {
+        // Assuming 'sidebar' is an FXML component declared elsewhere
+        // For this code to compile, you would need to add:
+        // @FXML private VBox sidebar;
+        if (sidebar != null) {
+            sidebar.setVisible(!sidebar.isVisible());
+            sidebar.setManaged(sidebar.isVisible());
+        }
+    }
+
+    // ── UI Helpers ─────────────────────────────────────────────────────────────
+
+    private void configureListView(ListView<SongData> listView) {
+        listView.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(SongData song, boolean empty) {
+                super.updateItem(song, empty);
+                if (empty || song == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    String icon = "youtube".equals(song.getType()) ? "YouTube: " : "File: ";
+                    setText(icon + song.getDisplayName());
+                }
+            }
+        });
+    }
+
+    private void setAlbumArt(String thumbnailUrl) {
+        try {
+            if (thumbnailUrl != null && !thumbnailUrl.isEmpty()) {
+                albumArtView.setImage(new Image(thumbnailUrl, true));
+            } else {
+                albumArtView.setImage(defaultAlbumArt);
+            }
+        } catch (Exception e) {
+            albumArtView.setImage(defaultAlbumArt);
+        }
+    }
+
+    private void updateToggleButtonStyle(Button btn, boolean active) {
+        if (btn == null) return;
+        if (active) {
+            btn.getStyleClass().remove("icon-button");
+            btn.getStyleClass().add("icon-button-active");
+        } else {
+            btn.getStyleClass().remove("icon-button-active");
+            if (!btn.getStyleClass().contains("icon-button"))
+                btn.getStyleClass().add("icon-button");
+        }
+    }
+
+    private void updatePlayPauseLabel() {
+        if (playPauseButton != null) {
+            playPauseButton.setText(isPlaying ? "||" : ">");
+        }
+    }
+
+    private void updateSessionButtonLabels() {
+        if (hostButton != null) {
+            hostButton.setText(lanSync.getMode() == LanSyncManager.Mode.HOST ? "Stop Sync" : "Start Sync");
+        }
+        if (joinButton != null) {
+            joinButton.setText(lanSync.getMode() == LanSyncManager.Mode.CLIENT ? "Leave" : "Connect");
+        }
+    }
+
+    private void setLoading(boolean loading) {
+        if (loadingIndicator != null) {
+            loadingIndicator.setVisible(loading);
+        }
+    }
+
+    // ── Player Controls ────────────────────────────────────────────────────────
+
+    @FXML
+    private void handlePlayPause() {
+        if (isPlaying) pauseMusic();
+        else playMusic();
+    }
+
+    private void playMusic() {
+        if (playlist.isEmpty()) {
+            updateStatus("Playlist is empty. Add songs to play.");
+            return;
+        }
+        if (currentSongIndex == -1) currentSongIndex = 0;
+
+        if (isPaused) {
+            audioPlayer.resume();
+            isPlaying = true;
+            isPaused  = false;
+            updatePlayPauseLabel();
+            progressTimer.play();
+            lanSync.notifyResume(audioPlayer.getCurrentPosition());
+            return;
+        }
+
+        // Fresh play
+        audioPlayer.stop();
+        SongData song = playlist.get(currentSongIndex);
+        updateNowPlaying(song);
+
+        if ("local".equals(song.getType())) {
+            playLocal(song);
+        } else {
+            playYouTube(song);
+        }
+    }
+
+    private void playLocal(SongData song) {
+        try {
+            audioPlayer.play(song.getPath());
+            onPlaybackStarted();
+        } catch (Exception e) {
+            updateStatus("Error: " + e.getMessage());
+            Platform.runLater(this::handleNext);
+        }
+    }
+
+    /**
+     * Resolves the YouTube stream URL via yt-dlp (on a background thread)
+     * then hands the URL to MediaPlayer.
+     */
+    private void playYouTube(SongData song) {
+                updateStatus("Loading audio: " + song.getTitle() + " (may take a few seconds...)");
+        setLoading(true);
+
+        new Thread(() -> {
+            try {
+                String streamUrl = YtDlpStreamResolver.resolve(song.getVideoId());
+
+                Platform.runLater(() -> {
+                    setLoading(false);
+                    try {
+                        audioPlayer.play(streamUrl);
+                        onPlaybackStarted();
+                        // Notify LAN clients (host mode only — no-op if idle)
+                        lanSync.notifyPlay(song.getVideoId(), streamUrl, 0);
+                    } catch (Exception e) {
+                        updateStatus("Playback error: " + e.getMessage());
+                        handleNext();
+                    }
+                });
+
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    setLoading(false);
+                    updateStatus("Stream error: " + e.getMessage());
+                    // Give user 3 seconds to read the error before skipping
+                    new Timeline(new KeyFrame(Duration.seconds(3),
+                        ev -> handleNext())).play();
+                });
+            }
+        }, "ytdlp-resolver").start();
+    }
+
+    private void onPlaybackStarted() {
+        isPlaying = true;
+        isPaused = false;
+        updatePlayPauseLabel();
+        progressTimer.play();
+
+        SongData currentSong = currentSongIndex >= 0 && currentSongIndex < playlist.size()
+            ? playlist.get(currentSongIndex)
+            : null;
+
+        if (currentSong != null) {
+                        updateStatus("Now Playing: " + currentSong.getTitle());
+            loadLyricsForSong(currentSong);
+        }
+    }
+
+    private void pauseMusic() {
+        audioPlayer.pause();
+        isPlaying = false;
+        isPaused  = true;
+        updatePlayPauseLabel();
+        progressTimer.stop();
+                updateStatus("Paused");
+        lanSync.notifyPause(audioPlayer.getCurrentPosition());
+    }
+
+    private void stopMusic() {
+        audioPlayer.stop();
+        isPlaying = false;
+        isPaused  = false;
+        updatePlayPauseLabel();
+        if (progressTimer != null) progressTimer.stop();
+        progressSlider.setValue(0);
+        currentTimeLabel.setText("0:00");
+        resetLyricsProgress();
+        lanSync.notifyStop();
+    }
+
+    @FXML
+    private void handleNext() {
+        if (playlist.isEmpty()) return;
+
+        if (repeatEnabled) {
+            // Replay same song
+            isPaused = false;
+            playMusic();
+            return;
+        }
+
+        if (shuffleEnabled) {
+            int next = currentSongIndex;
+            if (playlist.size() > 1) while (next == currentSongIndex)
+                next = (int) (Math.random() * playlist.size());
+            currentSongIndex = next;
+        } else {
+            int next = currentSongIndex + 1;
+            if (next >= playlist.size()) {
+                // Reached end of queue
+                if (autoRadioEnabled) {
+                    autoFetchMoreSongs(); // will play next after fetching
+                    return;
+                }
+                next = 0; // wrap around
+            }
+            currentSongIndex = next;
+        }
+
+        isPaused = false;
+        playMusic();
+    }
+
+    @FXML
+    private void handlePrevious() {
+        if (playlist.isEmpty()) return;
+        currentSongIndex = (currentSongIndex <= 0) ? 0 : currentSongIndex - 1;
+        isPaused = false;
+        playMusic();
+    }
+
+    // ── Auto Radio ─────────────────────────────────────────────────────────────
+
+    @FXML
+    private void handleToggleAutoRadio() {
+        autoRadioEnabled = !autoRadioEnabled;
+        updateToggleButtonStyle(autoRadioButton, autoRadioEnabled);
+        
+        if (autoRadioEnabled) {
+                        updateStatus("Auto Radio ON - related songs will be added automatically");
+            if (!playlist.isEmpty()) {
+                autoFetchMoreSongs(playlist.get(playlist.size() - 1), false);
+            }
+        } else {
+                        updateStatus("Auto Radio OFF");
+        }
+    }
+
+    /**
+     * Adds a song to the queue (if not already present) and starts playing it immediately.
+     * Called when user single-clicks a search result.
+     */
+    private void addToQueueAndPlay(SongData song) {
+        if (!playlist.contains(song)) {
+            playlist.add(song);
+        }
+        currentSongIndex = playlist.indexOf(song);
+        isPaused = false;
+        isPlaying = false;
+        audioPlayer.stop();
+        playMusic();
+                updateStatus("Playing: " + song.getTitle());
+        
+        if (autoRadioEnabled) {
+            autoFetchMoreSongs(song, false);
+        }
+    }
+
+    /**
+     * Auto-fetches more songs related to the given track.
+     * @param baseSong The song to base the search on
+     * @param playNext If true, advances the index and plays the first added song immediately
+     */
+    private void autoFetchMoreSongs(SongData baseSong, boolean playNext) {
+        if (youtubeService == null || baseSong == null) return;
+        
+        String query = baseSong.getTitle().replaceAll("\\(.*?\\)|\\[.*?\\]", "").trim()
+                + " " + baseSong.getChannel();
+
+                updateStatus("Radio: finding songs like \"" + baseSong.getTitle() + "\"...");
+
+        new Thread(() -> {
+            try {
+                List<YouTubeVideo> videos = youtubeService.searchVideos(query, 8);
+                Platform.runLater(() -> {
+                    int added = 0;
+                    for (YouTubeVideo v : videos) {
+                        boolean duplicate = playlist.stream()
+                                .anyMatch(s -> v.getId().equals(s.getVideoId()));
+                        if (!duplicate) {
+                            SongData s = new SongData();
+                            s.setVideoId(v.getId());
+                            s.setTitle(v.getTitle());
+                            s.setChannel(v.getChannel());
+                            s.setThumbnailUrl(v.getThumbnailUrl());
+                            s.setType("youtube");
+                            s.setLyricsSearchHint(query);
+                            playlist.add(s);
+                            added++;
+                        }
+                    }
+                    if (added > 0) {
+                                                updateStatus("Radio added " + added + " songs - keep listening!");
+                        if (playNext) {
+                            currentSongIndex++;
+                            isPaused = false;
+                            playMusic();
+                        }
+                    } else if (playNext) {
+                                                updateStatus("Radio: no new songs found.");
+                    } else {
+                                                updateStatus("Radio up to date.");
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("Auto-radio fetch failed: " + e.getMessage());
+            }
+        }, "auto-radio").start();
+    }
+    
+    /** Triggered by handleNext() when queue is exhausted. */
+    private void autoFetchMoreSongs() {
+        if (playlist.isEmpty()) return;
+        autoFetchMoreSongs(playlist.get(playlist.size() - 1), true);
+    }
+
+    private void handlePlaylistDoubleClick() {
+        int idx = playlistView.getSelectionModel().getSelectedIndex();
+        if (idx != -1) {
+            currentSongIndex = idx;
+            isPaused = false;
+            playMusic();
+        }
+    }
+
+    @FXML
+    private void handleToggleShuffle() {
+        shuffleEnabled = !shuffleEnabled;
+        updateToggleButtonStyle(shuffleButton, shuffleEnabled);
+                updateStatus(shuffleEnabled ? "Shuffle ON" : "Shuffle OFF");
+    }
+
+    @FXML
+    private void handleToggleRepeat() {
+        repeatEnabled = !repeatEnabled;
+        updateToggleButtonStyle(repeatButton, repeatEnabled);
+                updateStatus(repeatEnabled ? "Repeat ON" : "Repeat OFF");
+    }
+
+    // ── Volume & Progress ──────────────────────────────────────────────────────
+
+    private void setVolume(double value) {
+        audioPlayer.setVolume((int) value);
+    }
+
+    private void setupProgressTimer() {
+        progressTimer = new Timeline(new KeyFrame(Duration.millis(500), event -> {
+            if (isPlaying && !isDraggingSlider) {
+                long current = audioPlayer.getCurrentPosition();
+                lanSync.updateHostPosition(current);
+                
+                // Aggressive network syncing for remote tunnels
+                if (System.currentTimeMillis() - lastSyncTime > 4000) {
+                    lanSync.notifySync(current);
+                    lastSyncTime = System.currentTimeMillis();
+                }
+                
+                long total   = audioPlayer.getDuration();
+                if (total > 0) {
+                    currentTimeLabel.setText(formatTime(current));
+                    totalTimeLabel.setText(formatTime(total));
+                    progressSlider.setValue((double) current / total * 100.0);
+                }
+                syncLyricsToPosition(current);
+            }
+        }));
+        progressTimer.setCycleCount(Timeline.INDEFINITE);
+    }
+
+    private void setupProgressSlider() {
+        progressSlider.setOnMousePressed(e  -> isDraggingSlider = true);
+        progressSlider.setOnMouseReleased(e -> {
+            long total = audioPlayer.getDuration();
+            if (total > 0 && (isPlaying || isPaused)) {
+                long newPosMs = (long) (progressSlider.getValue() / 100.0 * total);
+                audioPlayer.seek(newPosMs);
+                currentTimeLabel.setText(formatTime(newPosMs));
+                syncLyricsToPosition(newPosMs);
+                lanSync.notifySeek(newPosMs);
+            }
+            isDraggingSlider = false;
+        });
+    }
+
+    // ── LAN Sync UI Handlers ────────────────────────────────────────────────
+
+    @FXML
+    private void handleHostSession() {
+        if (lanSync.getMode() == LanSyncManager.Mode.HOST) {
+            lanSync.stopSession();
+            updateToggleButtonStyle(hostButton, false);
+            updateSessionButtonLabels();
+            updatePeerLabel(0);
+                        updateStatus("LAN session stopped.");
+            if (publicLinkField != null) {
+                publicLinkField.setVisible(false);
+                publicLinkField.setManaged(false);
+                publicLinkField.setText("");
+            }
+        } else {
+            new Thread(() -> {
+                try {
+                    String ip = lanSync.startHosting();
+                    Platform.runLater(() -> {
+                        updateToggleButtonStyle(hostButton, true);
+                        updateToggleButtonStyle(joinButton, false);
+                        updateSessionButtonLabels();
+                                                updateStatus("Hosting on " + ip + " | Starting public tunnel...");
+                        updatePeerLabel(0);
+                        if (publicLinkField != null) {
+                            publicLinkField.setText("");
+                            publicLinkField.setPromptText("Generating tunnel link...");
+                            publicLinkField.setVisible(true);
+                            publicLinkField.setManaged(true);
+                        }
+                    });
+                    
+                    // Automatically launch the public tunnel so users don't have to use CMD
+                    lanSync.startPublicTunnel(url -> {
+                        Platform.runLater(() -> {
+                            if (url.startsWith("http")) {
+                                updateStatus("Public link ready. Share it with friends.");
+                                if (publicLinkField != null) {
+                                    publicLinkField.setText(url);
+                                }
+                            } else {
+                                updateStatus(url);
+                            }
+                        });
+                    });
+                    
+                } catch (Exception e) {
+                    Platform.runLater(() -> updateStatus("Could not start host: " + e.getMessage()));
+                }
+            }, "lan-host-start").start();
+        }
+    }
+
+    @FXML
+    private void handleJoinSession() {
+        if (lanSync.getMode() == LanSyncManager.Mode.CLIENT) {
+            lanSync.stopSession();
+            updateToggleButtonStyle(joinButton, false);
+            updateSessionButtonLabels();
+            updateStatus("Left LAN session.");
+            return;
+        }
+        // First try auto-discovery, then fall back to manual IP entry
+        updateStatus("Scanning LAN for host...");
+        new Thread(() -> {
+            String discovered = LanSyncManager.discoverHost(3000);
+            Platform.runLater(() -> {
+                String hostIp = discovered;
+                if (hostIp == null) {
+                    // Manual IP dialog
+                    TextInputDialog dlg = new TextInputDialog("192.168.1.");
+                    dlg.setTitle("Join LAN Session");
+                    dlg.setHeaderText("No host found automatically.");
+                    dlg.setContentText("Enter host IP address:");
+                    Optional<String> result = dlg.showAndWait();
+                    if (result.isEmpty() || result.get().isBlank()) {
+                        updateStatus("Join cancelled.");
+                        return;
+                    }
+                    hostIp = result.get().trim();
+                }
+                final String finalIp = hostIp;
+                updateStatus("Connecting to " + finalIp + "...");
+                new Thread(() -> {
+                    try {
+                        lanSync.joinSession(finalIp);
+                        Platform.runLater(() -> {
+                            updateToggleButtonStyle(joinButton, true);
+                            updateToggleButtonStyle(hostButton, false);
+                            updateSessionButtonLabels();
+                            updateStatus("Joined LAN session at " + finalIp + ". Waiting for host to play...");
+                        });
+                    } catch (Exception e) {
+                        Platform.runLater(() -> updateStatus("Could not join: " + e.getMessage()));
+                    }
+                }, "lan-join").start();
+            });
+        }, "lan-discover").start();
+    }
+
+    private void updatePeerLabel(int count) {
+        if (peerCountLabel != null) {
+            peerCountLabel.setText(count > 0 ? count + " device" + (count == 1 ? "" : "s") + " connected" : "");
+        }
+    }
+
+    // ── Playlist & Search ──────────────────────────────────────────────────────
+
+    @FXML
+    private void handleSearch() {
+        String query = searchField.getText().trim();
+        if (query.isEmpty()) { updateStatus("Please enter a search query."); return; }
+        if (youtubeService == null) { updateStatus("YouTube Service not connected."); return; }
+
+                updateStatus("Searching YouTube for: " + query);
+        setLoading(true);
+
+        new Thread(() -> {
+            try {
+                List<YouTubeVideo> videos = youtubeService.searchVideos(query, 15);
+                List<SongData> results = new ArrayList<>();
+                for (YouTubeVideo v : videos) {
+                    SongData s = new SongData();
+                    s.setVideoId(v.getId());
+                    s.setTitle(v.getTitle());
+                    s.setChannel(v.getChannel());
+                    s.setThumbnailUrl(v.getThumbnailUrl());
+                    s.setType("youtube");
+                    s.setLyricsSearchHint(query);
+                    results.add(s);
+                }
+                Platform.runLater(() -> {
+                    setLoading(false);
+                    searchResultsList.setItems(FXCollections.observableArrayList(results));
+                    updateStatus("Found " + results.size() + " results.");
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    setLoading(false);
+                    updateStatus("Search error: " + e.getMessage());
+                });
+            }
+        }, "yt-search").start();
+    }
+
+    @FXML
+    private void handleAddSearchResult() {
+        SongData song = searchResultsList.getSelectionModel().getSelectedItem();
+        if (song != null) {
+            playlist.add(song);
+            updateStatus("Added: " + song.getTitle());
+            if (autoRadioEnabled) {
+                autoFetchMoreSongs(song, false);
+            }
+        }
+    }
+
+    private void handleAddLocalFiles() {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Add Audio Files");
+        fc.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("Audio Files", "*.mp3", "*.wav", "*.aac", "*.ogg", "*.flac"),
+            new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
+        List<File> files = fc.showOpenMultipleDialog(playlistView.getScene().getWindow());
+        if (files != null) {
+            for (File f : files) {
+                SongData s = new SongData();
+                s.setTitle(f.getName());
+                s.setPath(f.getAbsolutePath());
+                s.setType("local");
+                s.setChannel("Local File");
+                playlist.add(s);
+            }
+            updateStatus("Added " + files.size() + " local file(s).");
+        }
+    }
+
+    @FXML
+    private void handleRemoveFromPlaylist() {
+        SongData song = playlistView.getSelectionModel().getSelectedItem();
+        if (song != null) {
+            int idx = playlist.indexOf(song);
+            if (idx == currentSongIndex && (isPlaying || isPaused)) stopMusic();
+            playlist.remove(song);
+            if (currentSongIndex >= playlist.size()) currentSongIndex = playlist.size() - 1;
+            updateStatus("Removed: " + song.getTitle());
+        }
+    }
+
+    @FXML
+    private void handleClearPlaylist() {
+        stopMusic();
+        playlist.clear();
+        currentSongIndex = -1;
+        updateNowPlaying(null);
+        updateStatus("Playlist cleared.");
+    }
+
+    @FXML
+    private void handleOpenSettings() {
+        FxSettingsWindow settingsView = new FxSettingsWindow(auth, settings, cache);
+        settingsView.setOnClose(this::hideSettingsOverlay);
+        settingsView.setOnSaved(() -> {
+            syncSettingsToUi();
+            updateStatus("Settings updated.");
+        });
+
+        try {
+            Parent settingsRoot = settingsView.createView();
+            settingsContainer.getChildren().setAll(settingsRoot);
+            settingsOverlay.setVisible(true);
+            settingsOverlay.setManaged(true);
+        } catch (IOException e) {
+            updateStatus("Couldn't open settings: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleDismissSettingsOverlay() {
+        hideSettingsOverlay();
+    }
+
+    @FXML
+    private void handleConsumeOverlayClick(MouseEvent event) {
+        event.consume();
+    }
+
+    // ── Utility ────────────────────────────────────────────────────────────────
+
+    private void updateStatus(String msg) {
+        if (statusLabel != null) statusLabel.setText(msg);
+    }
+
+    private void hideSettingsOverlay() {
+        if (settingsOverlay == null || settingsContainer == null) {
+            return;
+        }
+        settingsOverlay.setVisible(false);
+        settingsOverlay.setManaged(false);
+        settingsContainer.getChildren().clear();
+    }
+
+    private void syncSettingsToUi() {
+        int volume = settings.getInt("audio.volume", 70);
+        setVolume(volume);
+        volumeSlider.setValue(volume);
+    }
+
+    private void updateNowPlaying(SongData song) {
+        if (song == null) {
+            songTitleLabel.setText("No song selected");
+            artistLabel.setText("Select a song from the playlist");
+            setAlbumArt(null);
+            playlistView.getSelectionModel().clearSelection();
+            lanSync.clearWebTrackInfo();
+            clearLyrics("Pick a song to light up the lyrics panel.", "Waiting for track");
+        } else {
+            songTitleLabel.setText(song.getTitle());
+            artistLabel.setText(song.getChannel() != null ? song.getChannel() : "Unknown Artist");
+            playlistView.getSelectionModel().select(song);
+            setAlbumArt(song.getThumbnailUrl());
+            lanSync.updateWebTrackInfo(song.getTitle(), artistLabel.getText());
+            renderLyricsPlaceholder("Fetching lyrics for " + song.getTitle(), "Searching lyrics");
+        }
+    }
+
+    private void loadLyricsForSong(SongData song) {
+        if (song == null) {
+            clearLyrics("Pick a song to light up the lyrics panel.", "Waiting for track");
+            return;
+        }
+
+        long requestId = ++lyricsRequestSequence;
+        long duration = audioPlayer.getDuration();
+        renderLyricsPlaceholder("Fetching lyrics for " + song.getTitle(), "Searching lyrics");
+
+        new Thread(() -> {
+            LyricsData lyricsData = lyricsService.fetchLyrics(song, duration);
+            Platform.runLater(() -> {
+                if (requestId != lyricsRequestSequence) {
+                    return;
+                }
+                applyLyrics(lyricsData);
+            });
+        }, "lyrics-fetch").start();
+    }
+
+    private void applyLyrics(LyricsData lyricsData) {
+        currentLyrics = lyricsData == null ? List.of() : lyricsData.getLines();
+        currentLyricsSynced = lyricsData != null && lyricsData.isSynced();
+        currentLyricIndex = -1;
+        lyricLineLabels.clear();
+        lyricsContainer.getChildren().clear();
+
+        if (lyricsData == null || lyricsData.isEmpty()) {
+            lanSync.updateWebLyrics(null);
+            renderLyricsPlaceholder("Couldn't match lyrics from the current source for this track yet.", "Lyrics unavailable");
+            return;
+        }
+
+        lyricsHeadlineLabel.setText(currentLyricsSynced
+            ? "Lyrics move with the music."
+            : "Lyrics found, but this track does not include timing.");
+                lyricsSourceLabel.setText((currentLyricsSynced ? "Synced" : "Static") + " - " + lyricsData.getSource());
+
+        for (LyricsLine line : currentLyrics) {
+            Label lyricLine = new Label(line.getText());
+            lyricLine.setWrapText(true);
+            lyricLine.setMaxWidth(Double.MAX_VALUE);
+            lyricLine.getStyleClass().add("lyrics-line");
+            lyricLineLabels.add(lyricLine);
+            lyricsContainer.getChildren().add(lyricLine);
+        }
+
+        if (currentLyricsSynced) {
+            syncLyricsToPosition(audioPlayer.getCurrentPosition());
+        } else {
+            styleLyrics(-1);
+            if (lyricsScrollPane != null) {
+                lyricsScrollPane.setVvalue(0);
+            }
+        }
+        lanSync.updateWebLyrics(lyricsData);
+    }
+
+    private void renderLyricsPlaceholder(String headline, String sourceText) {
+        currentLyrics = List.of();
+        currentLyricsSynced = false;
+        currentLyricIndex = -1;
+        lyricLineLabels.clear();
+
+        if (lyricsContainer == null) {
+            return;
+        }
+
+        lyricsHeadlineLabel.setText(headline);
+        lyricsSourceLabel.setText(sourceText);
+        lyricsContainer.getChildren().clear();
+
+        Label placeholder = new Label("Timed lyrics will lock onto the song here when they are available.");
+        placeholder.setWrapText(true);
+        placeholder.setMaxWidth(Double.MAX_VALUE);
+        placeholder.getStyleClass().addAll("lyrics-line", "lyrics-line-active");
+        lyricsContainer.getChildren().add(placeholder);
+
+        if (lyricsScrollPane != null) {
+            lyricsScrollPane.setVvalue(0);
+        }
+    }
+
+    private void clearLyrics(String headline, String sourceText) {
+        lyricsRequestSequence++;
+        renderLyricsPlaceholder(headline, sourceText);
+    }
+
+    private void resetLyricsProgress() {
+        currentLyricIndex = -1;
+        if (currentLyricsSynced) {
+            styleLyrics(-1);
+        }
+        if (lyricsScrollPane != null) {
+            lyricsScrollPane.setVvalue(0);
+        }
+    }
+
+    private void syncLyricsToPosition(long currentMs) {
+        if (!currentLyricsSynced || currentLyrics.isEmpty() || lyricLineLabels.isEmpty()) {
+            return;
+        }
+
+        int nextIndex = findLyricIndex(currentMs);
+        if (nextIndex != currentLyricIndex) {
+            currentLyricIndex = nextIndex;
+            styleLyrics(nextIndex);
+            scrollLyricsTo(nextIndex);
+        }
+    }
+
+    private int findLyricIndex(long currentMs) {
+        int index = -1;
+        for (int i = 0; i < currentLyrics.size(); i++) {
+            if (currentLyrics.get(i).getTimestampMs() <= currentMs) {
+                index = i;
+            } else {
+                break;
+            }
+        }
+        return index;
+    }
+
+    private void styleLyrics(int activeIndex) {
+        for (int i = 0; i < lyricLineLabels.size(); i++) {
+            Label lyricLine = lyricLineLabels.get(i);
+            lyricLine.getStyleClass().removeAll("lyrics-line-past", "lyrics-line-active", "lyrics-line-upcoming");
+
+            if (activeIndex >= 0 && i < activeIndex) {
+                lyricLine.getStyleClass().add("lyrics-line-past");
+            } else if (i == activeIndex) {
+                lyricLine.getStyleClass().add("lyrics-line-active");
+            } else {
+                lyricLine.getStyleClass().add("lyrics-line-upcoming");
+            }
+        }
+    }
+
+    private void scrollLyricsTo(int activeIndex) {
+        if (lyricsScrollPane == null || activeIndex < 0 || currentLyrics.size() < 2) {
+            return;
+        }
+        int focusIndex = Math.max(0, activeIndex - 1);
+        double position = (double) focusIndex / Math.max(1, currentLyrics.size() - 1);
+        lyricsScrollPane.setVvalue(Math.max(0, Math.min(1, position)));
+    }
+
+    private String formatTime(long millis) {
+        long s = (millis / 1000) % 60;
+        long m = (millis / 60000) % 60;
+        long h = millis / 3600000;
+        return h > 0 ? String.format("%d:%02d:%02d", h, m, s) : String.format("%d:%02d", m, s);
+    }
+
+    public void shutdown() {
+        if (progressTimer != null) progressTimer.stop();
+        stopMusic();
+        lanSync.stopSession();
+        updateSessionButtonLabels();
+        cache.saveCache();
+        YtDlpStreamResolver.cleanup();
+        System.out.println("FxMusicPlayer shut down.");
+    }
+}

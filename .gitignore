@@ -1,0 +1,7 @@
+# Cache and temporary files
+__pycache__/
+cache/
+temp/
+
+# Credentials
+credentials.json

@@ -1,0 +1,17 @@
+{
+  "name": "Harmony Pro",
+  "short_name": "Harmony",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#1DB954",
+  "description": "Premium synchronized music streaming experience.",
+  "icons": [
+    {
+      "src": "app-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

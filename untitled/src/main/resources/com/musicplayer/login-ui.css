@@ -1,0 +1,115 @@
+/* login-ui.css — Harmony Pro Login (JavaFX-compatible) */
+
+/*
+ * JavaFX NOTE: CSS custom properties (:root variables) are NOT supported.
+ * Colors are inlined as hex values. Unsupported properties
+ * (-fx-transform, -fx-transition, @keyframes) have been removed.
+ *
+ * Color palette:
+ *   bg:             #0D1117
+ *   card-bg:        #161B22
+ *   accent:         #1DB954  (Spotify green)
+ *   accent-hover:   #1ed760
+ *   text-primary:   #F0F6FC
+ *   text-secondary: #8B949E
+ *   text-muted:     #484F58
+ *   border:         #30363D
+ */
+
+.main-container {
+    -fx-background-color: #161B22;
+    -fx-background-radius: 12;
+    -fx-border-color: #30363D;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.6), 24, 0.1, 0, 4);
+}
+
+.logo-icon {
+    -fx-font-size: 48px;
+    -fx-fill: #1DB954;
+}
+
+.title-label {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #F0F6FC;
+    -fx-font-family: "Segoe UI";
+}
+
+.tagline-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #8B949E;
+    -fx-font-family: "Segoe UI";
+}
+
+.benefits-box {
+    -fx-padding: 15;
+    -fx-background-color: #0D1117;
+    -fx-background-radius: 6;
+}
+
+.benefit-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: #1DB954;
+    -fx-font-family: "Segoe UI";
+}
+
+.login-button {
+    -fx-background-color: #1DB954;
+    -fx-text-fill: #F0F6FC;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 20;
+    -fx-cursor: hand;
+    -fx-padding: 10 20;
+    -fx-effect: dropshadow(gaussian, rgba(29, 185, 84, 0.4), 10, 0.2, 0, 2);
+}
+
+.login-button:hover {
+    -fx-background-color: #1ed760;
+    -fx-effect: dropshadow(gaussian, rgba(29, 185, 84, 0.6), 16, 0.3, 0, 0);
+}
+
+.login-button:pressed {
+    -fx-background-color: #17a349;
+}
+
+.status-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: #8B949E;
+}
+
+.privacy-text {
+    -fx-font-size: 9px;
+    -fx-fill: #484F58;
+    -fx-text-alignment: center;
+}
+
+.demo-link {
+    -fx-text-fill: #8B949E;
+    -fx-font-size: 11px;
+    -fx-border-color: transparent;
+    -fx-background-color: transparent;
+    -fx-padding: 5;
+    -fx-cursor: hand;
+}
+
+.demo-link:hover {
+    -fx-text-fill: #1DB954;
+}
+
+.close-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #8B949E;
+    -fx-font-size: 14px;
+    -fx-cursor: hand;
+    -fx-background-radius: 50%;
+    -fx-min-width: 28;
+    -fx-min-height: 28;
+}
+
+.close-button:hover {
+    -fx-text-fill: #F0F6FC;
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+}
