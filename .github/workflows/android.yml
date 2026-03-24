@@ -11,6 +11,9 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: untitled
 
     steps:
       - name: Check out repository
