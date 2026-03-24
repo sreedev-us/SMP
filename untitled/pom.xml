@@ -139,7 +139,7 @@
             <plugin>
                 <groupId>com.gluonhq</groupId>
                 <artifactId>gluonfx-maven-plugin</artifactId>
-                <version>1.0.27</version>
+                <version>1.0.28</version>
                 <configuration>
                     <mainClass>${main.class}</mainClass>
                     <appIdentifier>com.musicplayer.harmonypro</appIdentifier>

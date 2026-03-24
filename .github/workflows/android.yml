@@ -32,10 +32,9 @@ jobs:
         with:
           path: |
             ~/.m2/repository
-            ~/.gluon
-          key: ${{ runner.os }}-android-${{ hashFiles('**/pom.xml') }}
+          key: ${{ runner.os }}-android-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-android-
+            ${{ runner.os }}-android-m2-
 
       - name: Install Linux build dependencies
         run: |
@@ -58,6 +57,13 @@ jobs:
           echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
           java -version
           native-image --version
+
+      - name: Reset native build caches
+        run: |
+          rm -rf target/gluonfx
+          rm -rf ~/.gluon/substrate
+          rm -rf ~/.gluon/graalvm
+          mkdir -p ~/.gluon
 
       - name: Build Android package
         run: mvn -B -Pandroid -DskipTests clean gluonfx:build gluonfx:package
