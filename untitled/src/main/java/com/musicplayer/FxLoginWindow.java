@@ -129,7 +129,10 @@ public class FxLoginWindow extends Application {
 
             playerController = new FxMusicPlayer(activeAuth, settings);
 
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/musicplayer/PlayerView.fxml"));
+            String playerView = AppPlatform.isMobile()
+                ? "/com/musicplayer/PlayerViewMobile.fxml"
+                : "/com/musicplayer/PlayerView.fxml";
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(playerView));
             loader.setController(playerController);
             Parent root = loader.load();
 
