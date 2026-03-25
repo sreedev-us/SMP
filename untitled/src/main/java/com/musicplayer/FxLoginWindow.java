@@ -20,15 +20,13 @@ public class FxLoginWindow extends Application {
     @FXML
     private Label statusLabel;
     @FXML
+    private Button googleLoginBtn;
+    @FXML
     private Button closeButton;
 
     private Stage primaryStage;
     private Scene primaryScene;
     private FxMusicPlayer playerController;
-
-    public FxLoginWindow() {
-        this.googleAuth = new GoogleAuthentication();
-    }
 
     /**
      * The main entry point for all JavaFX applications.
@@ -55,10 +53,19 @@ public class FxLoginWindow extends Application {
 
     @FXML
     public void initialize() {
+        if (googleLoginBtn != null && AppPlatform.isMobile()) {
+            googleLoginBtn.setDisable(true);
+            googleLoginBtn.setText("Google Login Coming Soon");
+        }
+
         if (closeButton != null) {
             boolean desktop = !AppPlatform.isMobile();
             closeButton.setVisible(desktop);
             closeButton.setManaged(desktop);
+        }
+
+        if (statusLabel != null && AppPlatform.isMobile()) {
+            statusLabel.setText("Mobile build ready. Use Demo Mode while Google login is being adapted for Android.");
         }
     }
 
@@ -68,14 +75,25 @@ public class FxLoginWindow extends Application {
      */
     @FXML
     private void handleGoogleLogin() {
+        if (AppPlatform.isMobile()) {
+            statusLabel.setText("Google login is not available on Android yet. Please use Demo Mode for now.");
+            return;
+        }
+
         statusLabel.setText("Opening browser for Google login...");
         new Thread(() -> {
-            boolean success = googleAuth.googleLogin();
+            GoogleAuthentication auth = getGoogleAuth();
+            if (auth == null) {
+                Platform.runLater(() -> statusLabel.setText("Google login is unavailable. Check your desktop configuration."));
+                return;
+            }
+
+            boolean success = auth.googleLogin();
             Platform.runLater(() -> {
                 if (success) {
                     statusLabel.setText("Logged in. Loading player...");
-                    activeAuth = googleAuth;
-                    launchMainPlayer(googleAuth.getCurrentUser());
+                    activeAuth = auth;
+                    launchMainPlayer(auth.getCurrentUser());
                 } else {
                     statusLabel.setText("Google login failed. Check credentials.json.");
                 }
@@ -141,6 +159,20 @@ public class FxLoginWindow extends Application {
             playerController.shutdown();
         }
         Platform.exit();
+    }
+
+    private GoogleAuthentication getGoogleAuth() {
+        if (googleAuth != null) {
+            return googleAuth;
+        }
+
+        try {
+            googleAuth = new GoogleAuthentication();
+            return googleAuth;
+        } catch (Exception | LinkageError ex) {
+            ex.printStackTrace();
+            return null;
+        }
     }
 
     // Main method to launch the app
