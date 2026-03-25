@@ -144,7 +144,9 @@ public class FxLoginWindow extends Application {
 
         } catch (Exception e) {
             e.printStackTrace();
-            statusLabel.setText("Failed to load player: " + e.getClass().getSimpleName());
+            String detail = e.getMessage();
+            statusLabel.setText("Failed to load player: " + e.getClass().getSimpleName()
+                + (detail == null || detail.isBlank() ? "" : " - " + detail));
         }
     }
 
