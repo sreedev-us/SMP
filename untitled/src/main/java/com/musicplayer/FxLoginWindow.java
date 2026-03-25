@@ -11,6 +11,7 @@ import javafx.scene.control.Label;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 
 public class FxLoginWindow extends Application {
@@ -36,12 +37,13 @@ public class FxLoginWindow extends Application {
     public void start(Stage primaryStage) throws Exception {
         this.primaryStage = primaryStage;
 
-        FXMLLoader loader = new FXMLLoader(resolveResource("/com/musicplayer/LoginView.fxml"));
+        FXMLLoader loader = new FXMLLoader();
+        loader.setLocation(resolveResourceIfPresent("/com/musicplayer/LoginView.fxml"));
         loader.setController(this);
-        Parent root = loader.load();
+        Parent root = loadFromResource(loader, "/com/musicplayer/LoginView.fxml");
 
         primaryScene = new Scene(root, 450, 600);
-        primaryScene.getStylesheets().add(resolveResource("/com/musicplayer/login-ui.css").toExternalForm());
+        addStylesheet(primaryScene, "/com/musicplayer/login-ui.css");
         primaryStage.setTitle("Harmony Pro Login");
         primaryStage.setScene(primaryScene);
         primaryStage.setOnCloseRequest(event -> {
@@ -133,12 +135,13 @@ public class FxLoginWindow extends Application {
             String playerView = AppPlatform.isMobile()
                 ? "/com/musicplayer/PlayerViewMobile.fxml"
                 : "/com/musicplayer/PlayerView.fxml";
-            FXMLLoader loader = new FXMLLoader(resolveResource(playerView));
+            FXMLLoader loader = new FXMLLoader();
+            loader.setLocation(resolveResourceIfPresent(playerView));
             loader.setController(playerController);
-            Parent root = loader.load();
+            Parent root = loadFromResource(loader, playerView);
 
             primaryScene.getStylesheets().clear();
-            primaryScene.getStylesheets().add(resolveResource("/com/musicplayer/player-styles.css").toExternalForm());
+            addStylesheet(primaryScene, "/com/musicplayer/player-styles.css");
             primaryScene.setRoot(root);
             primaryStage.setTitle("Harmony Pro - Welcome, " + username);
             AppPlatform.configurePrimaryStage(primaryStage);
@@ -182,14 +185,39 @@ public class FxLoginWindow extends Application {
         launch(args);
     }
 
-    private URL resolveResource(String path) {
+    private Parent loadFromResource(FXMLLoader loader, String path) throws IOException {
+        InputStream stream = openResource(path);
+        try (stream) {
+            return loader.load(stream);
+        }
+    }
+
+    private void addStylesheet(Scene scene, String path) {
+        URL url = resolveResourceIfPresent(path);
+        if (url != null) {
+            scene.getStylesheets().add(url.toExternalForm());
+        } else {
+            System.err.println("Stylesheet not found: " + path);
+        }
+    }
+
+    private InputStream openResource(String path) {
+        InputStream stream = FxLoginWindow.class.getResourceAsStream(path);
+        if (stream == null) {
+            String classLoaderPath = path.startsWith("/") ? path.substring(1) : path;
+            stream = FxLoginWindow.class.getClassLoader().getResourceAsStream(classLoaderPath);
+        }
+        if (stream == null) {
+            throw new IllegalStateException("Missing resource stream: " + path);
+        }
+        return stream;
+    }
+
+    private URL resolveResourceIfPresent(String path) {
         URL url = FxLoginWindow.class.getResource(path);
         if (url == null) {
             String classLoaderPath = path.startsWith("/") ? path.substring(1) : path;
             url = FxLoginWindow.class.getClassLoader().getResource(classLoaderPath);
-        }
-        if (url == null) {
-            throw new IllegalStateException("Missing resource: " + path);
         }
         return url;
     }
