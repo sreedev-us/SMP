@@ -11,6 +11,7 @@ import javafx.scene.control.Label;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.net.URL;
 
 public class FxLoginWindow extends Application {
 
@@ -35,12 +36,12 @@ public class FxLoginWindow extends Application {
     public void start(Stage primaryStage) throws Exception {
         this.primaryStage = primaryStage;
 
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/musicplayer/LoginView.fxml"));
+        FXMLLoader loader = new FXMLLoader(resolveResource("/com/musicplayer/LoginView.fxml"));
         loader.setController(this);
         Parent root = loader.load();
 
         primaryScene = new Scene(root, 450, 600);
-        primaryScene.getStylesheets().add(getClass().getResource("/com/musicplayer/login-ui.css").toExternalForm());
+        primaryScene.getStylesheets().add(resolveResource("/com/musicplayer/login-ui.css").toExternalForm());
         primaryStage.setTitle("Harmony Pro Login");
         primaryStage.setScene(primaryScene);
         primaryStage.setOnCloseRequest(event -> {
@@ -132,12 +133,12 @@ public class FxLoginWindow extends Application {
             String playerView = AppPlatform.isMobile()
                 ? "/com/musicplayer/PlayerViewMobile.fxml"
                 : "/com/musicplayer/PlayerView.fxml";
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(playerView));
+            FXMLLoader loader = new FXMLLoader(resolveResource(playerView));
             loader.setController(playerController);
             Parent root = loader.load();
 
             primaryScene.getStylesheets().clear();
-            primaryScene.getStylesheets().add(getClass().getResource("/com/musicplayer/player-styles.css").toExternalForm());
+            primaryScene.getStylesheets().add(resolveResource("/com/musicplayer/player-styles.css").toExternalForm());
             primaryScene.setRoot(root);
             primaryStage.setTitle("Harmony Pro - Welcome, " + username);
             AppPlatform.configurePrimaryStage(primaryStage);
@@ -179,5 +180,17 @@ public class FxLoginWindow extends Application {
     // Main method to launch the app
     public static void main(String[] args) {
         launch(args);
+    }
+
+    private URL resolveResource(String path) {
+        URL url = FxLoginWindow.class.getResource(path);
+        if (url == null) {
+            String classLoaderPath = path.startsWith("/") ? path.substring(1) : path;
+            url = FxLoginWindow.class.getClassLoader().getResource(classLoaderPath);
+        }
+        if (url == null) {
+            throw new IllegalStateException("Missing resource: " + path);
+        }
+        return url;
     }
 }
