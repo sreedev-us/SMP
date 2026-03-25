@@ -108,19 +108,15 @@ public class FxLoginWindow extends Application {
     @FXML
     private void handleDemoLogin() {
         statusLabel.setText("Connecting in Demo Mode...");
-        new Thread(() -> {
-            DemoAuthSystem demo = new DemoAuthSystem();
-            boolean success = demo.googleLogin(); // always true
-            Platform.runLater(() -> {
-                if (success) {
-                    statusLabel.setText("Demo mode active. Loading player...");
-                    activeAuth = demo;
-                    launchMainPlayer(demo.getCurrentUser());
-                } else {
-                    statusLabel.setText("Demo login failed.");
-                }
-            });
-        }).start();
+        DemoAuthSystem demo = new DemoAuthSystem();
+        boolean success = demo.googleLogin(); // always true
+        if (success) {
+            statusLabel.setText("Demo mode active. Loading player...");
+            activeAuth = demo;
+            launchMainPlayer(demo.getCurrentUser());
+        } else {
+            statusLabel.setText("Demo login failed.");
+        }
     }
 
     /**
@@ -145,7 +141,7 @@ public class FxLoginWindow extends Application {
 
         } catch (Exception e) {
             e.printStackTrace();
-            statusLabel.setText("Failed to load main player.");
+            statusLabel.setText("Failed to load player: " + e.getClass().getSimpleName());
         }
     }
 
