@@ -40,12 +40,14 @@
 .header-logo {
     -fx-font-size: 26px;
     -fx-fill: #50e3c2;
+    -fx-text-fill: #50e3c2;
 }
 
 .header-title {
     -fx-font-size: 18px;
     -fx-font-weight: bold;
     -fx-fill: #f6fbff;
+    -fx-text-fill: #f6fbff;
 }
 
 .user-info-label {

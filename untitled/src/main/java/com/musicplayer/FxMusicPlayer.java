@@ -313,7 +313,7 @@ public class FxMusicPlayer {
 
     private void updatePlayPauseLabel() {
         if (playPauseButton != null) {
-            playPauseButton.setText(isPlaying ? "||" : ">");
+            playPauseButton.setText(isPlaying ? "||" : "|>");
         }
     }
 

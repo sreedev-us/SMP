@@ -14,7 +14,6 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Text?>
 
 <StackPane fx:id="appRoot" styleClass="main-container"
            xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
@@ -27,8 +26,8 @@
                 <Button fx:id="menuButton" text="Browse" styleClass="menu-toggle-button"
                         onAction="#handleToggleSidebar" visible="false" managed="false" />
 
-                <Text text="HP" styleClass="header-logo" />
-                <Text text="Harmony Pro" styleClass="header-title" />
+                <Label text="HP" styleClass="header-logo" />
+                <Label text="Harmony Pro" styleClass="header-title" />
                 <HBox HBox.hgrow="ALWAYS" />
                 <Label fx:id="userInfoLabel" text="Not Logged In" styleClass="user-info-label" />
 
@@ -129,10 +128,10 @@
                     <Button fx:id="autoRadioButton" text="Auto" styleClass="icon-button"
                             onAction="#handleToggleAutoRadio" />
 
-                    <Button text="&lt;&lt;" styleClass="icon-button" onAction="#handlePrevious" />
-                    <Button fx:id="playPauseButton" text=">" styleClass="play-pause-button"
+                    <Button text="|&lt;" styleClass="icon-button" onAction="#handlePrevious" />
+                    <Button fx:id="playPauseButton" text="|>" styleClass="play-pause-button"
                             onAction="#handlePlayPause" />
-                    <Button text="&gt;&gt;" styleClass="icon-button" onAction="#handleNext" />
+                    <Button text="&gt;|" styleClass="icon-button" onAction="#handleNext" />
 
                     <Button fx:id="repeatButton" text="Loop" styleClass="icon-button"
                             onAction="#handleToggleRepeat" />
