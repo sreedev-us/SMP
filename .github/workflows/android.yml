@@ -86,7 +86,7 @@ jobs:
         with:
           name: harmony-player-android
           path: |
-            target/**/*.apk
-            target/**/*.aab
-            target/gluonfx/**/log/*
+            untitled/target/**/*.apk
+            untitled/target/**/*.aab
+            untitled/target/gluonfx/**/log/*
           if-no-files-found: warn
