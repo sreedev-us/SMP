@@ -906,6 +906,11 @@ public class FxMusicPlayer {
     // ── Playlist & Search ──────────────────────────────────────────────────────
 
     @FXML
+    public void handleSearch() {
+        performSearch();
+    }
+
+    @FXML
     public void handleSearch(ActionEvent event) {
         performSearch();
     }
