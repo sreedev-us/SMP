@@ -5,6 +5,7 @@ import org.json.JSONArray;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -905,7 +906,11 @@ public class FxMusicPlayer {
     // ── Playlist & Search ──────────────────────────────────────────────────────
 
     @FXML
-    public void handleSearch() {
+    public void handleSearch(ActionEvent event) {
+        performSearch();
+    }
+
+    private void performSearch() {
         String query = searchField.getText().trim();
         if (query.isEmpty()) { updateStatus("Please enter a search query."); return; }
         if (youtubeService == null) { updateStatus("YouTube Service not connected."); return; }
@@ -1117,7 +1122,7 @@ public class FxMusicPlayer {
             queryButton.getStyleClass().add("history-chip-button");
             queryButton.setOnAction(event -> {
                 searchField.setText(item);
-                handleSearch();
+                performSearch();
             });
 
             Button deleteButton = new Button("x");
