@@ -277,7 +277,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleToggleSidebar() {
+    public void handleToggleSidebar() {
         // Assuming 'sidebar' is an FXML component declared elsewhere
         // For this code to compile, you would need to add:
         // @FXML private VBox sidebar;
@@ -354,7 +354,7 @@ public class FxMusicPlayer {
     // ── Player Controls ────────────────────────────────────────────────────────
 
     @FXML
-    private void handlePlayPause() {
+    public void handlePlayPause() {
         if (isPlaying) pauseMusic();
         else playMusic();
     }
@@ -488,7 +488,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleNext() {
+    public void handleNext() {
         if (playlist.isEmpty()) return;
 
         if (repeatEnabled) {
@@ -521,7 +521,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handlePrevious() {
+    public void handlePrevious() {
         if (playlist.isEmpty()) return;
         currentSongIndex = (currentSongIndex <= 0) ? 0 : currentSongIndex - 1;
         isPaused = false;
@@ -531,7 +531,7 @@ public class FxMusicPlayer {
     // ── Auto Radio ─────────────────────────────────────────────────────────────
 
     @FXML
-    private void handleToggleAutoRadio() {
+    public void handleToggleAutoRadio() {
         autoRadioEnabled = !autoRadioEnabled;
         updateToggleButtonStyle(autoRadioButton, autoRadioEnabled);
         
@@ -712,14 +712,14 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleToggleShuffle() {
+    public void handleToggleShuffle() {
         shuffleEnabled = !shuffleEnabled;
         updateToggleButtonStyle(shuffleButton, shuffleEnabled);
                 updateStatus(shuffleEnabled ? "Shuffle ON" : "Shuffle OFF");
     }
 
     @FXML
-    private void handleToggleRepeat() {
+    public void handleToggleRepeat() {
         repeatEnabled = !repeatEnabled;
         updateToggleButtonStyle(repeatButton, repeatEnabled);
                 updateStatus(repeatEnabled ? "Repeat ON" : "Repeat OFF");
@@ -732,7 +732,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleVolumeDown() {
+    public void handleVolumeDown() {
         int nextVolume = Math.max(0, settings.getInt("audio.volume", 70) - 10);
         settings.set("audio.volume", nextVolume);
         syncSettingsToUi();
@@ -740,7 +740,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleVolumeUp() {
+    public void handleVolumeUp() {
         int nextVolume = Math.min(100, settings.getInt("audio.volume", 70) + 10);
         settings.set("audio.volume", nextVolume);
         syncSettingsToUi();
@@ -798,7 +798,7 @@ public class FxMusicPlayer {
     // ── LAN Sync UI Handlers ────────────────────────────────────────────────
 
     @FXML
-    private void handleHostSession() {
+    public void handleHostSession() {
         if (lanSync.getMode() == LanSyncManager.Mode.HOST) {
             lanSync.stopSession();
             updateToggleButtonStyle(hostButton, false);
@@ -850,7 +850,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleJoinSession() {
+    public void handleJoinSession() {
         if (lanSync.getMode() == LanSyncManager.Mode.CLIENT) {
             lanSync.stopSession();
             updateToggleButtonStyle(joinButton, false);
@@ -905,7 +905,7 @@ public class FxMusicPlayer {
     // ── Playlist & Search ──────────────────────────────────────────────────────
 
     @FXML
-    private void handleSearch() {
+    public void handleSearch() {
         String query = searchField.getText().trim();
         if (query.isEmpty()) { updateStatus("Please enter a search query."); return; }
         if (youtubeService == null) { updateStatus("YouTube Service not connected."); return; }
@@ -944,7 +944,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleAddSearchResult() {
+    public void handleAddSearchResult() {
         SongData song = searchResultsList.getSelectionModel().getSelectedItem();
         if (song != null) {
             playlist.add(song);
@@ -956,7 +956,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleAddLocalFiles() {
+    public void handleAddLocalFiles() {
         FileChooser fc = new FileChooser();
         fc.setTitle("Add Audio Files");
         fc.getExtensionFilters().addAll(
@@ -978,7 +978,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleRemoveFromPlaylist() {
+    public void handleRemoveFromPlaylist() {
         SongData song = playlistView.getSelectionModel().getSelectedItem();
         if (song != null) {
             int idx = playlist.indexOf(song);
@@ -990,7 +990,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleClearPlaylist() {
+    public void handleClearPlaylist() {
         stopMusic();
         playlist.clear();
         currentSongIndex = -1;
@@ -999,7 +999,7 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleOpenSettings() {
+    public void handleOpenSettings() {
         if (AppPlatform.isMobile()) {
             updateStatus("Settings overlay is desktop-only for now.");
             return;
@@ -1022,12 +1022,12 @@ public class FxMusicPlayer {
     }
 
     @FXML
-    private void handleDismissSettingsOverlay() {
+    public void handleDismissSettingsOverlay() {
         hideSettingsOverlay();
     }
 
     @FXML
-    private void handleConsumeOverlayClick(MouseEvent event) {
+    public void handleConsumeOverlayClick(MouseEvent event) {
         event.consume();
     }
 
