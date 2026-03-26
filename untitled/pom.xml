@@ -17,9 +17,9 @@
     </repositories>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <javafx.version>21.0.2</javafx.version>
         <main.class>com.musicplayer.FxLoginWindow</main.class>
         <app.name>Harmony Pro</app.name>
         <app.vendor>Harmony Pro</app.vendor>
@@ -71,17 +71,17 @@
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>17.0.2</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-            <version>17.0.2</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-media</artifactId>
-            <version>17.0.2</version>
+            <version>${javafx.version}</version>
         </dependency>
 
         <!-- YouTube Data API v3 -->
@@ -114,11 +114,6 @@
             <artifactId>display</artifactId>
             <version>4.0.19</version>
         </dependency>
-        <dependency>
-            <groupId>com.gluonhq.attach</groupId>
-            <artifactId>util</artifactId>
-            <version>4.0.19</version>
-        </dependency>
     </dependencies>
 
     <build>
@@ -127,6 +122,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.openjfx</groupId>
@@ -208,7 +206,6 @@
                             <attachList>
                                 <list>display</list>
                                 <list>storage</list>
-                                <list>util</list>
                             </attachList>
                         </configuration>
                     </plugin>

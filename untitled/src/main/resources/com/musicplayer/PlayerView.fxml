@@ -10,6 +10,7 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
@@ -54,6 +55,11 @@
                                onAction="#handleSearch" />
                     <Button text="Go" styleClass="search-btn" onAction="#handleSearch" />
                 </HBox>
+
+                <VBox fx:id="searchHistorySection" spacing="8" visible="false" managed="false">
+                    <Label text="RECENT SEARCHES" styleClass="section-label" />
+                    <FlowPane fx:id="searchHistoryContainer" hgap="8" vgap="8" />
+                </VBox>
 
                 <ListView fx:id="searchResultsList" styleClass="results-list"
                           VBox.vgrow="ALWAYS" minHeight="120" />

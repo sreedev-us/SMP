@@ -102,6 +102,45 @@
     -fx-effect: dropshadow(gaussian, rgba(80, 227, 194, 0.45), 16, 0.2, 0, 0);
 }
 
+.history-bubble {
+    -fx-alignment: center-left;
+    -fx-spacing: 4;
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-radius: 18;
+    -fx-padding: 4 6 4 10;
+}
+
+.history-chip-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #dbe7f3;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+    -fx-padding: 4 2 4 2;
+}
+
+.history-chip-button:hover {
+    -fx-text-fill: #50e3c2;
+}
+
+.history-delete-button {
+    -fx-background-color: rgba(255, 255, 255, 0.10);
+    -fx-background-radius: 50%;
+    -fx-text-fill: #a9bdd3;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-min-width: 18;
+    -fx-min-height: 18;
+    -fx-max-width: 18;
+    -fx-max-height: 18;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+
+.history-delete-button:hover {
+    -fx-background-color: rgba(255, 111, 97, 0.25);
+    -fx-text-fill: #ffb4ab;
+}
+
 .results-list, .playlist-view {
     -fx-background-color: transparent;
     -fx-border-color: transparent;

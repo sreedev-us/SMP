@@ -17,8 +17,17 @@ public class CacheManager {
     public CacheManager() {
         this.searchCache = new HashMap<>();
         this.videoCache = new HashMap<>();
-        this.cachePrefs = Preferences.userRoot().node("com/musicplayer/harmonypro/cache");
+        this.cachePrefs = initPreferences();
         initializeCache();
+    }
+
+    private Preferences initPreferences() {
+        try {
+            return Preferences.userRoot().node("com/musicplayer/harmonypro/cache");
+        } catch (Exception | LinkageError e) {
+            System.err.println("Cache preferences unavailable, using in-memory cache only: " + e.getMessage());
+            return null;
+        }
     }
 
     public void initializeCache() {
@@ -35,6 +44,9 @@ public class CacheManager {
 
     @SuppressWarnings("unchecked")
     private void loadCacheFromPreferences() {
+        if (cachePrefs == null) {
+            return;
+        }
         try {
             // Load search cache size
             int searchCacheSize = cachePrefs.getInt("searchCache.size", 0);
@@ -82,6 +94,9 @@ public class CacheManager {
     }
 
     private void saveCacheToPreferences() {
+        if (cachePrefs == null) {
+            return;
+        }
         try {
             // Clear existing cache entries
             clearPreferencesCache();
@@ -117,6 +132,9 @@ public class CacheManager {
     }
 
     private void clearPreferencesCache() {
+        if (cachePrefs == null) {
+            return;
+        }
         try {
             // Clear search cache
             int searchSize = cachePrefs.getInt("searchCache.size", 0);

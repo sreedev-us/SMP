@@ -12,6 +12,8 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 
 public class FxSettingsWindow {
 
@@ -56,10 +58,16 @@ public class FxSettingsWindow {
     }
 
     public Parent createView() throws IOException {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/musicplayer/SettingsView.fxml"));
+        FXMLLoader loader = new FXMLLoader();
+        loader.setLocation(resolveResourceIfPresent("/com/musicplayer/SettingsView.fxml"));
         loader.setController(this);
-        Parent root = loader.load();
-        root.getStylesheets().add(getClass().getResource("/com/musicplayer/player-styles.css").toExternalForm());
+        Parent root = loadFromResource(loader, "/com/musicplayer/SettingsView.fxml");
+        URL stylesheet = resolveResourceIfPresent("/com/musicplayer/player-styles.css");
+        if (stylesheet != null) {
+            root.getStylesheets().add(stylesheet.toExternalForm());
+        } else {
+            System.err.println("Stylesheet not found: /com/musicplayer/player-styles.css");
+        }
         loadSettings();
         return root;
     }
@@ -308,5 +316,33 @@ public class FxSettingsWindow {
         if (closeHandler != null) {
             closeHandler.run();
         }
+    }
+
+    private Parent loadFromResource(FXMLLoader loader, String path) throws IOException {
+        InputStream stream = openResource(path);
+        try (stream) {
+            return loader.load(stream);
+        }
+    }
+
+    private InputStream openResource(String path) {
+        InputStream stream = FxSettingsWindow.class.getResourceAsStream(path);
+        if (stream == null) {
+            String classLoaderPath = path.startsWith("/") ? path.substring(1) : path;
+            stream = FxSettingsWindow.class.getClassLoader().getResourceAsStream(classLoaderPath);
+        }
+        if (stream == null) {
+            throw new IllegalStateException("Missing resource stream: " + path);
+        }
+        return stream;
+    }
+
+    private URL resolveResourceIfPresent(String path) {
+        URL url = FxSettingsWindow.class.getResource(path);
+        if (url == null) {
+            String classLoaderPath = path.startsWith("/") ? path.substring(1) : path;
+            url = FxSettingsWindow.class.getClassLoader().getResource(classLoaderPath);
+        }
+        return url;
     }
 }

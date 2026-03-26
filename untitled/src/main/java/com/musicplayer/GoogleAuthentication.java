@@ -48,13 +48,16 @@ public class GoogleAuthentication implements AuthSystem {
     private String currentEmail;
 
     public GoogleAuthentication() {
+        if (AppPlatform.isMobile()) {
+            throw new UnsupportedOperationException("Google login is not supported on Android yet.");
+        }
         this.authPrefs = Preferences.userRoot().node("com/musicplayer/harmonypro/auth");
         try {
             HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
             this.dataStoreFactory = new FileDataStoreFactory(DATA_STORE_DIR);
         } catch (Exception e) {
             e.printStackTrace();
-            System.exit(1);
+            throw new IllegalStateException("Could not initialize Google authentication", e);
         }
         loadCurrentUser();
     }

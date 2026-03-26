@@ -131,6 +131,7 @@ public class FxLoginWindow extends Application {
             SettingsManager settings = new SettingsManager();
 
             playerController = new FxMusicPlayer(activeAuth, settings);
+            playerController.setExternalUrlOpener(url -> getHostServices().showDocument(url));
 
             String playerView = AppPlatform.isMobile()
                 ? "/com/musicplayer/PlayerViewMobile.fxml"

@@ -10,9 +10,12 @@ public class SongData {
     private String type;
     private String lyricsSearchHint;
     private long duration;
+    private boolean guestPlaybackBlocked;
+    private String playbackIssue;
 
     public String getDisplayName() {
-        return title != null ? title : "Unknown Song";
+        String base = title != null ? title : "Unknown Song";
+        return guestPlaybackBlocked ? base + " (guest playback blocked)" : base;
     }
 
     // Getters and setters
@@ -39,4 +42,10 @@ public class SongData {
 
     public long getDuration() { return duration; }
     public void setDuration(long duration) { this.duration = duration; }
+
+    public boolean isGuestPlaybackBlocked() { return guestPlaybackBlocked; }
+    public void setGuestPlaybackBlocked(boolean guestPlaybackBlocked) { this.guestPlaybackBlocked = guestPlaybackBlocked; }
+
+    public String getPlaybackIssue() { return playbackIssue; }
+    public void setPlaybackIssue(String playbackIssue) { this.playbackIssue = playbackIssue; }
 }

@@ -11,14 +11,19 @@ public final class AppPlatform {
     private static final String OS_NAME = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
     private static final String JAVA_FX_PLATFORM = System.getProperty("javafx.platform", "").toLowerCase(Locale.ROOT);
     private static final String GLUON_PLATFORM = System.getProperty("gluon.platform", "").toLowerCase(Locale.ROOT);
+    private static final String JAVA_RUNTIME_NAME = System.getProperty("java.runtime.name", "").toLowerCase(Locale.ROOT);
+    private static final String JAVA_VM_NAME = System.getProperty("java.vm.name", "").toLowerCase(Locale.ROOT);
 
     private AppPlatform() {
     }
 
     public static boolean isAndroid() {
-        return OS_NAME.contains("android")
+        return hasAndroidRuntime()
+            || OS_NAME.contains("android")
             || JAVA_FX_PLATFORM.contains("android")
-            || GLUON_PLATFORM.contains("android");
+            || GLUON_PLATFORM.contains("android")
+            || JAVA_RUNTIME_NAME.contains("android")
+            || JAVA_VM_NAME.contains("dalvik");
     }
 
     public static boolean isMobile() {
@@ -44,5 +49,14 @@ public final class AppPlatform {
         stage.setMaxWidth(visualBounds.getWidth());
         stage.setMaxHeight(visualBounds.getHeight());
         stage.centerOnScreen();
+    }
+
+    private static boolean hasAndroidRuntime() {
+        try {
+            Class.forName("android.os.Build");
+            return true;
+        } catch (ClassNotFoundException ex) {
+            return false;
+        }
     }
 }

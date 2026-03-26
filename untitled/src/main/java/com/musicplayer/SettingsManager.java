@@ -20,8 +20,17 @@ public class SettingsManager {
     public SettingsManager(String configName) {
         this.configFile = configName + ".properties";
         this.settings = loadDefaultSettings();
-        this.prefs = Preferences.userRoot().node("com/musicplayer/harmonypro");
+        this.prefs = initPreferences();
         loadSettings();
+    }
+
+    private Preferences initPreferences() {
+        try {
+            return Preferences.userRoot().node("com/musicplayer/harmonypro");
+        } catch (Exception | LinkageError e) {
+            System.err.println("Preferences unavailable, using file/default settings only: " + e.getMessage());
+            return null;
+        }
     }
 
     private Map<String, Object> loadDefaultSettings() {
@@ -52,6 +61,8 @@ public class SettingsManager {
         youtube.put("audio_quality", "best");
         youtube.put("auto_add_to_playlist", false);
         youtube.put("enable_comments", false);
+        youtube.put("stream_resolver_url", "");
+        youtube.put("stream_resolver_token", "");
         defaultSettings.put("youtube", youtube);
 
         // Playback settings
@@ -76,6 +87,7 @@ public class SettingsManager {
         privacy.put("collect_analytics", false);
         privacy.put("share_usage_data", false);
         privacy.put("remember_search_history", true);
+        privacy.put("search_history_entries", "[]");
         defaultSettings.put("privacy", privacy);
 
         return defaultSettings;
@@ -95,6 +107,9 @@ public class SettingsManager {
     // FIX 1: Added annotation
     @SuppressWarnings("unchecked")
     private void loadFromPreferences() {
+        if (prefs == null) {
+            return;
+        }
         try {
             // Load simple settings directly from Preferences
             for (String category : settings.keySet()) {
@@ -195,6 +210,9 @@ public class SettingsManager {
 
     @SuppressWarnings("unchecked")
     private void saveToPreferences() {
+        if (prefs == null) {
+            return;
+        }
         try {
             for (String category : settings.keySet()) {
                 Map<String, Object> categorySettings = (Map<String, Object>) settings.get(category);

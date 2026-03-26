@@ -1,5 +1,7 @@
 package com.musicplayer;
 
+import org.json.JSONArray;
+
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -10,6 +12,8 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.animation.KeyFrame;
@@ -23,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import javafx.scene.control.TextInputDialog;
 
 public class FxMusicPlayer {
@@ -35,10 +40,13 @@ public class FxMusicPlayer {
     private final CacheManager cache;
     private final LanSyncManager lanSync = new LanSyncManager();
     private final LyricsService lyricsService = new LyricsService();
+    private Consumer<String> externalUrlOpener;
 
     // --- FXML UI Components ---
     @FXML private Label userInfoLabel;
     @FXML private TextField searchField;
+    @FXML private VBox searchHistorySection;
+    @FXML private FlowPane searchHistoryContainer;
     @FXML private ListView<SongData> searchResultsList;
     @FXML private ListView<SongData> playlistView;
     @FXML private ImageView albumArtView;
@@ -47,6 +55,7 @@ public class FxMusicPlayer {
     @FXML private Label currentTimeLabel;
     @FXML private Label totalTimeLabel;
     @FXML private Slider progressSlider;
+    @FXML private ProgressBar progressBar;
     @FXML private Button playPauseButton;
     @FXML private Slider volumeSlider;
     @FXML private Label statusLabel;
@@ -85,6 +94,8 @@ public class FxMusicPlayer {
     private int currentLyricIndex = -1;
     private boolean currentLyricsSynced = false;
     private long lyricsRequestSequence = 0;
+    private final List<String> searchHistory = new ArrayList<>();
+    private static final int MAX_SEARCH_HISTORY = 8;
 
     public FxMusicPlayer(AuthSystem auth, SettingsManager settings) {
         this.auth = auth;
@@ -161,11 +172,18 @@ public class FxMusicPlayer {
         playlistView.setItems(playlist);
         configureListView(playlistView);
         configureListView(searchResultsList);
+        loadSearchHistory();
+        refreshSearchHistoryUi();
 
         // Volume
-        volumeSlider.setValue(settings.getInt("audio.volume", 70));
-        volumeSlider.valueProperty().addListener((obs, o, n) -> setVolume(n.intValue()));
-        setVolume((int) volumeSlider.getValue());
+        int initialVolume = settings.getInt("audio.volume", 70);
+        if (volumeSlider != null) {
+            volumeSlider.setValue(initialVolume);
+            volumeSlider.valueProperty().addListener((obs, o, n) -> setVolume(n.intValue()));
+            setVolume((int) volumeSlider.getValue());
+        } else {
+            setVolume(initialVolume);
+        }
 
         // Progress tracking
         setupProgressTimer();
@@ -177,7 +195,7 @@ public class FxMusicPlayer {
                 userInfoLabel.setText("User: " + auth.getCurrentUser());
             } else {
                 userInfoLabel.setText("Guest Mode (Limited API)");
-                updateStatus("Guest Mode: Using yt-dlp for searches.");
+                updateStatus("Guest Mode: search works, and mobile playback opens through YouTube.");
             }
         }
 
@@ -281,7 +299,8 @@ public class FxMusicPlayer {
                     setGraphic(null);
                 } else {
                     String icon = "youtube".equals(song.getType()) ? "YouTube: " : "File: ";
-                    setText(icon + song.getDisplayName());
+                    String issue = song.isGuestPlaybackBlocked() ? " [Guest blocked]" : "";
+                    setText(icon + song.getDisplayName() + issue);
                 }
             }
         });
@@ -384,12 +403,20 @@ public class FxMusicPlayer {
      * then hands the URL to MediaPlayer.
      */
     private void playYouTube(SongData song) {
-                updateStatus("Loading audio: " + song.getTitle() + " (may take a few seconds...)");
+        if (song.isGuestPlaybackBlocked()) {
+            updateStatus(song.getPlaybackIssue() != null
+                ? song.getPlaybackIssue()
+                : "This track can't be played in Guest Mode. Try another result or sign in.");
+            tryAdvanceAfterBlockedTrack(song);
+            return;
+        }
+
+        updateStatus("Loading audio: " + song.getTitle() + " (may take a few seconds...)");
         setLoading(true);
 
         new Thread(() -> {
             try {
-                String streamUrl = YtDlpStreamResolver.resolve(song.getVideoId());
+                String streamUrl = resolveOnlineStream(song);
 
                 Platform.runLater(() -> {
                     setLoading(false);
@@ -407,10 +434,11 @@ public class FxMusicPlayer {
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     setLoading(false);
-                    updateStatus("Stream error: " + e.getMessage());
-                    // Give user 3 seconds to read the error before skipping
-                    new Timeline(new KeyFrame(Duration.seconds(3),
-                        ev -> handleNext())).play();
+                    if (shouldUseOfficialYouTubePlayback()) {
+                        openSongInYouTube(song);
+                        return;
+                    }
+                    handlePlaybackFailure(song, e);
                 });
             }
         }, "ytdlp-resolver").start();
@@ -448,7 +476,12 @@ public class FxMusicPlayer {
         isPaused  = false;
         updatePlayPauseLabel();
         if (progressTimer != null) progressTimer.stop();
-        progressSlider.setValue(0);
+        if (progressSlider != null) {
+            progressSlider.setValue(0);
+        }
+        if (progressBar != null) {
+            progressBar.setProgress(0);
+        }
         currentTimeLabel.setText("0:00");
         resetLyricsProgress();
         lanSync.notifyStop();
@@ -530,6 +563,85 @@ public class FxMusicPlayer {
         if (autoRadioEnabled) {
             autoFetchMoreSongs(song, false);
         }
+    }
+
+    private void handlePlaybackFailure(SongData song, Exception error) {
+        if (song != null && error instanceof GuestPlaybackUnavailableException) {
+            song.setGuestPlaybackBlocked(true);
+            song.setPlaybackIssue(error.getMessage());
+            playlistView.refresh();
+            searchResultsList.refresh();
+            updateStatus(error.getMessage());
+            tryAdvanceAfterBlockedTrack(song);
+            return;
+        }
+
+        updateStatus("Stream error: " + error.getMessage());
+        new Timeline(new KeyFrame(Duration.seconds(3), ev -> handleNext())).play();
+    }
+
+    private String resolveOnlineStream(SongData song) throws Exception {
+        Exception remoteFailure = null;
+
+        if (RemoteStreamResolver.isConfigured(settings)) {
+            try {
+                return RemoteStreamResolver.resolve(settings, song.getVideoId());
+            } catch (Exception ex) {
+                remoteFailure = ex;
+                System.err.println("Remote stream resolver failed: " + ex.getMessage());
+            }
+        }
+
+        try {
+            return YtDlpStreamResolver.resolve(song.getVideoId());
+        } catch (Exception localFailure) {
+            if (remoteFailure != null) {
+                localFailure.addSuppressed(remoteFailure);
+            }
+            throw localFailure;
+        }
+    }
+
+    private void tryAdvanceAfterBlockedTrack(SongData failedSong) {
+        if (playlist.isEmpty()) {
+            return;
+        }
+
+        int nextPlayableIndex = findNextPlayableIndex(currentSongIndex);
+        if (nextPlayableIndex == -1) {
+            stopMusic();
+            updateStatus("Guest Mode can't play the current queue. Try local files, another search result, or sign in.");
+            return;
+        }
+
+        if (failedSong != null && playlist.get(nextPlayableIndex) == failedSong) {
+            stopMusic();
+            updateStatus("This track can't be played in Guest Mode. Try another result or sign in.");
+            return;
+        }
+
+        currentSongIndex = nextPlayableIndex;
+        isPaused = false;
+        isPlaying = false;
+        new Timeline(new KeyFrame(Duration.seconds(1), ev -> playMusic())).play();
+    }
+
+    private int findNextPlayableIndex(int startIndex) {
+        if (playlist.isEmpty()) {
+            return -1;
+        }
+
+        int safeStart = Math.max(0, startIndex);
+        for (int offset = 1; offset <= playlist.size(); offset++) {
+            int idx = (safeStart + offset) % playlist.size();
+            SongData candidate = playlist.get(idx);
+            if (!candidate.isGuestPlaybackBlocked()) {
+                return idx;
+            }
+        }
+
+        SongData current = playlist.get(safeStart % playlist.size());
+        return current.isGuestPlaybackBlocked() ? -1 : safeStart % playlist.size();
     }
 
     /**
@@ -619,6 +731,22 @@ public class FxMusicPlayer {
         audioPlayer.setVolume((int) value);
     }
 
+    @FXML
+    private void handleVolumeDown() {
+        int nextVolume = Math.max(0, settings.getInt("audio.volume", 70) - 10);
+        settings.set("audio.volume", nextVolume);
+        syncSettingsToUi();
+        updateStatus("Volume " + nextVolume + "%");
+    }
+
+    @FXML
+    private void handleVolumeUp() {
+        int nextVolume = Math.min(100, settings.getInt("audio.volume", 70) + 10);
+        settings.set("audio.volume", nextVolume);
+        syncSettingsToUi();
+        updateStatus("Volume " + nextVolume + "%");
+    }
+
     private void setupProgressTimer() {
         progressTimer = new Timeline(new KeyFrame(Duration.millis(500), event -> {
             if (isPlaying && !isDraggingSlider) {
@@ -635,7 +763,13 @@ public class FxMusicPlayer {
                 if (total > 0) {
                     currentTimeLabel.setText(formatTime(current));
                     totalTimeLabel.setText(formatTime(total));
-                    progressSlider.setValue((double) current / total * 100.0);
+                    double progress = (double) current / total;
+                    if (progressSlider != null) {
+                        progressSlider.setValue(progress * 100.0);
+                    }
+                    if (progressBar != null) {
+                        progressBar.setProgress(progress);
+                    }
                 }
                 syncLyricsToPosition(current);
             }
@@ -644,6 +778,9 @@ public class FxMusicPlayer {
     }
 
     private void setupProgressSlider() {
+        if (progressSlider == null) {
+            return;
+        }
         progressSlider.setOnMousePressed(e  -> isDraggingSlider = true);
         progressSlider.setOnMouseReleased(e -> {
             long total = audioPlayer.getDuration();
@@ -773,6 +910,8 @@ public class FxMusicPlayer {
         if (query.isEmpty()) { updateStatus("Please enter a search query."); return; }
         if (youtubeService == null) { updateStatus("YouTube Service not connected."); return; }
 
+        rememberSearchQuery(query);
+
                 updateStatus("Searching YouTube for: " + query);
         setLoading(true);
 
@@ -860,6 +999,10 @@ public class FxMusicPlayer {
 
     @FXML
     private void handleOpenSettings() {
+        if (AppPlatform.isMobile()) {
+            updateStatus("Settings overlay is desktop-only for now.");
+            return;
+        }
         FxSettingsWindow settingsView = new FxSettingsWindow(auth, settings, cache);
         settingsView.setOnClose(this::hideSettingsOverlay);
         settingsView.setOnSaved(() -> {
@@ -893,6 +1036,127 @@ public class FxMusicPlayer {
         if (statusLabel != null) statusLabel.setText(msg);
     }
 
+    private void loadSearchHistory() {
+        searchHistory.clear();
+        if (!settings.getBoolean("privacy.remember_search_history", true)) {
+            return;
+        }
+
+        String raw = settings.getString("privacy.search_history_entries", "[]");
+        try {
+            JSONArray array = new JSONArray(raw);
+            for (int i = 0; i < array.length(); i++) {
+                String value = array.optString(i, "").trim();
+                if (!value.isBlank()) {
+                    searchHistory.add(value);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Could not parse search history: " + e.getMessage());
+        }
+    }
+
+    private void rememberSearchQuery(String query) {
+        if (!settings.getBoolean("privacy.remember_search_history", true)) {
+            return;
+        }
+
+        String trimmed = query == null ? "" : query.trim();
+        if (trimmed.isBlank()) {
+            return;
+        }
+
+        searchHistory.removeIf(item -> item.equalsIgnoreCase(trimmed));
+        searchHistory.add(0, trimmed);
+        while (searchHistory.size() > MAX_SEARCH_HISTORY) {
+            searchHistory.remove(searchHistory.size() - 1);
+        }
+        saveSearchHistory();
+        refreshSearchHistoryUi();
+    }
+
+    private void removeSearchHistoryEntry(String query) {
+        if (query == null) {
+            return;
+        }
+        searchHistory.removeIf(item -> item.equalsIgnoreCase(query));
+        saveSearchHistory();
+        refreshSearchHistoryUi();
+    }
+
+    private void saveSearchHistory() {
+        JSONArray array = new JSONArray();
+        for (String item : searchHistory) {
+            array.put(item);
+        }
+        settings.set("privacy.search_history_entries", array.toString());
+        settings.saveSettings();
+    }
+
+    private void refreshSearchHistoryUi() {
+        if (searchHistorySection == null || searchHistoryContainer == null) {
+            return;
+        }
+
+        boolean enabled = settings.getBoolean("privacy.remember_search_history", true);
+        boolean visible = enabled && !searchHistory.isEmpty();
+        searchHistorySection.setVisible(visible);
+        searchHistorySection.setManaged(visible);
+        searchHistoryContainer.getChildren().clear();
+
+        if (!visible) {
+            return;
+        }
+
+        for (String item : searchHistory) {
+            HBox bubble = new HBox();
+            bubble.getStyleClass().add("history-bubble");
+
+            Button queryButton = new Button(item);
+            queryButton.getStyleClass().add("history-chip-button");
+            queryButton.setOnAction(event -> {
+                searchField.setText(item);
+                handleSearch();
+            });
+
+            Button deleteButton = new Button("x");
+            deleteButton.getStyleClass().add("history-delete-button");
+            deleteButton.setOnAction(event -> removeSearchHistoryEntry(item));
+
+            bubble.getChildren().addAll(queryButton, deleteButton);
+            searchHistoryContainer.getChildren().add(bubble);
+        }
+    }
+
+    public void setExternalUrlOpener(Consumer<String> externalUrlOpener) {
+        this.externalUrlOpener = externalUrlOpener;
+    }
+
+    private boolean shouldUseOfficialYouTubePlayback() {
+        return AppPlatform.isMobile()
+            && auth != null
+            && auth.isLoggedIn()
+            && !auth.isRealLogin();
+    }
+
+    private void openSongInYouTube(SongData song) {
+        if (song == null || song.getVideoId() == null || song.getVideoId().isBlank()) {
+            updateStatus("This result is missing a YouTube video ID.");
+            return;
+        }
+        if (externalUrlOpener == null) {
+            updateStatus("YouTube playback is unavailable because no URL opener is configured.");
+            return;
+        }
+
+        String youtubeUrl = "https://www.youtube.com/watch?v=" + song.getVideoId();
+        externalUrlOpener.accept(youtubeUrl);
+        isPlaying = false;
+        isPaused = false;
+        updatePlayPauseLabel();
+        updateStatus("Opening YouTube: " + song.getTitle());
+    }
+
     private void hideSettingsOverlay() {
         if (settingsOverlay == null || settingsContainer == null) {
             return;
@@ -905,7 +1169,9 @@ public class FxMusicPlayer {
     private void syncSettingsToUi() {
         int volume = settings.getInt("audio.volume", 70);
         setVolume(volume);
-        volumeSlider.setValue(volume);
+        if (volumeSlider != null) {
+            volumeSlider.setValue(volume);
+        }
     }
 
     private void updateNowPlaying(SongData song) {
