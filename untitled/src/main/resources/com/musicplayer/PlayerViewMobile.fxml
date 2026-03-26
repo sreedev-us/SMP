@@ -37,8 +37,7 @@
                     <Label text="SEARCH" styleClass="section-label" />
                     <HBox spacing="8" alignment="CENTER_LEFT">
                         <TextField fx:id="searchField" promptText="Search YouTube..."
-                                   styleClass="search-field" HBox.hgrow="ALWAYS"
-                                   onAction="#handleSearch" />
+                                   styleClass="search-field" HBox.hgrow="ALWAYS" />
                         <Button text="Go" styleClass="search-btn" onAction="#handleSearch" />
                     </HBox>
                     <VBox fx:id="searchHistorySection" spacing="8" visible="false" managed="false">

@@ -233,6 +233,10 @@ public class FxMusicPlayer {
             }
         });
 
+        if (searchField != null) {
+            searchField.setOnAction(event -> performSearch());
+        }
+
         // Setup responsive layout listener (runs after scene is created)
         Platform.runLater(this::setupResponsiveListener);
     }
