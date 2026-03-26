@@ -1,0 +1,14 @@
+{
+  "resources": [
+    { "pattern": "com/musicplayer/.*\\.fxml$" },
+    { "pattern": "com/musicplayer/.*\\.css$" },
+    { "pattern": "com/musicplayer/.*\\.json$" },
+    { "pattern": "com/musicplayer/.*\\.png$" },
+    { "pattern": "com/musicplayer/.*\\.jpg$" },
+    { "pattern": "com/musicplayer/.*\\.jpeg$" },
+    { "pattern": "com/musicplayer/.*\\.gif$" },
+    { "pattern": "com/musicplayer/.*\\.bmp$" },
+    { "pattern": "com/musicplayer/.*\\.html$" },
+    { "pattern": "com/musicplayer/.*\\.js$" }
+  ]
+}
