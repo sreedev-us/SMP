@@ -955,6 +955,7 @@ public class FxMusicPlayer {
         }
     }
 
+    @FXML
     private void handleAddLocalFiles() {
         FileChooser fc = new FileChooser();
         fc.setTitle("Add Audio Files");
