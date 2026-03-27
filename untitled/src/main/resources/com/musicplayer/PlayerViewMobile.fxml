@@ -43,6 +43,66 @@
                     <VBox spacing="18" styleClass="mobile-content">
                         <padding><Insets top="18" bottom="18" left="18" right="18" /></padding>
 
+                        <VBox spacing="14" styleClass="mobile-dashboard-section">
+                            <HBox alignment="CENTER_LEFT" spacing="8">
+                                <Label text="Good morning!" styleClass="mobile-dashboard-title" />
+                                <Region HBox.hgrow="ALWAYS" />
+                                <Button text="Search" styleClass="mobile-ghost-button"
+                                        onAction="#handleToggleSidebar" />
+                            </HBox>
+
+                            <Label text="Jump back in" styleClass="mobile-section-heading" />
+                            <FlowPane hgap="10" vgap="10" prefWrapLength="420" styleClass="mobile-shortcut-grid">
+                                <VBox styleClass="mobile-shortcut-card shortcut-card-ocean" prefWidth="186" spacing="6">
+                                    <Label text="Chill Mix" styleClass="mobile-shortcut-title" />
+                                    <Label text="Your top mixes" styleClass="mobile-shortcut-subtitle" />
+                                </VBox>
+                                <VBox styleClass="mobile-shortcut-card shortcut-card-indigo" prefWidth="186" spacing="6">
+                                    <Label text="Indie Nights" styleClass="mobile-shortcut-title" />
+                                    <Label text="Fresh finds" styleClass="mobile-shortcut-subtitle" />
+                                </VBox>
+                                <VBox styleClass="mobile-shortcut-card shortcut-card-rose" prefWidth="186" spacing="6">
+                                    <Label text="Pop Blend" styleClass="mobile-shortcut-title" />
+                                    <Label text="Top releases" styleClass="mobile-shortcut-subtitle" />
+                                </VBox>
+                                <VBox styleClass="mobile-shortcut-card shortcut-card-forest" prefWidth="186" spacing="6">
+                                    <Label text="Workout Run" styleClass="mobile-shortcut-title" />
+                                    <Label text="Keep moving" styleClass="mobile-shortcut-subtitle" />
+                                </VBox>
+                            </FlowPane>
+
+                            <HBox alignment="CENTER_LEFT" spacing="10">
+                                <Label text="Daily Discover" styleClass="mobile-section-heading" />
+                                <Label text="New Releases" styleClass="mobile-section-heading" />
+                            </HBox>
+                            <HBox spacing="10">
+                                <VBox styleClass="mobile-discovery-card discover-card-spectrum" HBox.hgrow="ALWAYS" spacing="10">
+                                    <Label text="Discover Weekly" styleClass="mobile-shortcut-title" />
+                                    <Label text="A new mix built around your listening." styleClass="mobile-shortcut-subtitle" wrapText="true" />
+                                </VBox>
+                                <VBox styleClass="mobile-discovery-card discover-card-spotlight" HBox.hgrow="ALWAYS" spacing="10">
+                                    <Label text="Taylor Swift" styleClass="mobile-shortcut-title" />
+                                    <Label text="Olivia Rodrigo • SZA • more" styleClass="mobile-shortcut-subtitle" wrapText="true" />
+                                </VBox>
+                            </HBox>
+
+                            <Label text="Your playlists" styleClass="mobile-section-heading" />
+                            <HBox spacing="10">
+                                <VBox styleClass="mobile-playlist-card playlist-card-liked" HBox.hgrow="ALWAYS" spacing="6">
+                                    <Label text="Liked Songs" styleClass="mobile-shortcut-title" />
+                                    <Label text="193 tracks" styleClass="mobile-shortcut-subtitle" />
+                                </VBox>
+                                <VBox styleClass="mobile-playlist-card playlist-card-lofi" HBox.hgrow="ALWAYS" spacing="6">
+                                    <Label text="Lo-fi Beats" styleClass="mobile-shortcut-title" />
+                                    <Label text="Late hours" styleClass="mobile-shortcut-subtitle" />
+                                </VBox>
+                                <VBox styleClass="mobile-playlist-card playlist-card-gym" HBox.hgrow="ALWAYS" spacing="6">
+                                    <Label text="Gym Playlist" styleClass="mobile-shortcut-title" />
+                                    <Label text="High energy" styleClass="mobile-shortcut-subtitle" />
+                                </VBox>
+                            </HBox>
+                        </VBox>
+
                         <VBox styleClass="mobile-hero-card" spacing="18">
                             <HBox alignment="CENTER_LEFT" spacing="10" styleClass="mobile-hero-topline">
                                 <Label text="Now Playing" styleClass="mobile-eyebrow" />

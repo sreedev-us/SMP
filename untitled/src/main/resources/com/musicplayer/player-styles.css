@@ -405,6 +405,105 @@
     -fx-padding: 4 0 0 0;
 }
 
+.mobile-dashboard-section {
+    -fx-padding: 2 0 4 0;
+}
+
+.mobile-dashboard-title {
+    -fx-text-fill: #f8fbf8;
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+}
+
+.mobile-section-heading {
+    -fx-text-fill: rgba(255, 255, 255, 0.88);
+    -fx-font-size: 19px;
+    -fx-font-weight: bold;
+}
+
+.mobile-shortcut-grid {
+    -fx-pref-wrap-length: 420;
+}
+
+.mobile-shortcut-card,
+.mobile-discovery-card,
+.mobile-playlist-card {
+    -fx-background-radius: 24;
+    -fx-border-radius: 24;
+    -fx-padding: 16;
+    -fx-min-height: 108;
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-border-width: 1;
+}
+
+.mobile-shortcut-card {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.22), 18, 0.16, 0, 6);
+}
+
+.mobile-discovery-card {
+    -fx-min-height: 150;
+}
+
+.mobile-playlist-card {
+    -fx-min-height: 116;
+}
+
+.mobile-shortcut-title {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.mobile-shortcut-subtitle {
+    -fx-text-fill: rgba(255, 255, 255, 0.70);
+    -fx-font-size: 11px;
+}
+
+.shortcut-card-ocean {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(138, 191, 255, 0.34), rgba(31, 62, 93, 0.96));
+}
+
+.shortcut-card-indigo {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(77, 108, 255, 0.34), rgba(34, 30, 88, 0.96));
+}
+
+.shortcut-card-rose {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(255, 154, 177, 0.34), rgba(90, 30, 46, 0.96));
+}
+
+.shortcut-card-forest {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(56, 208, 128, 0.32), rgba(17, 63, 44, 0.96));
+}
+
+.discover-card-spectrum {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(255, 122, 89, 0.34), rgba(115, 57, 187, 0.88));
+}
+
+.discover-card-spotlight {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.18), rgba(39, 45, 51, 0.96));
+}
+
+.playlist-card-liked {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(148, 108, 255, 0.40), rgba(49, 28, 101, 0.96));
+}
+
+.playlist-card-lofi {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(255, 192, 140, 0.30), rgba(76, 43, 28, 0.96));
+}
+
+.playlist-card-gym {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(120, 120, 120, 0.24), rgba(31, 31, 31, 0.96));
+}
+
 .mobile-now-playing-card,
 .mobile-lyrics-card {
     -fx-background-radius: 26;
@@ -583,6 +682,46 @@
     -fx-border-radius: 28;
     -fx-padding: 18;
     -fx-spacing: 16;
+}
+
+.mobile-settings-content .settings-root {
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent;
+    -fx-effect: null;
+}
+
+.mobile-settings-content .settings-hero {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-background-radius: 22;
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-border-width: 1;
+}
+
+.mobile-settings-content .settings-hero-title {
+    -fx-font-size: 24px;
+}
+
+.mobile-settings-content .settings-tabs {
+    -fx-padding: 8 0 0 0;
+}
+
+.mobile-settings-content .settings-card {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.025));
+    -fx-border-color: rgba(255, 255, 255, 0.06);
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+}
+
+.mobile-settings-content .settings-row {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-background-radius: 16;
+}
+
+.mobile-settings-content .settings-footer {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(255, 255, 255, 0.04) transparent transparent transparent;
 }
 
 .mobile-settings-header {
