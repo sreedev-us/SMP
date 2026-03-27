@@ -5,7 +5,6 @@ import org.json.JSONArray;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -991,10 +990,6 @@ public class FxMusicPlayer {
         performSearch();
     }
 
-    @FXML
-    public void handleSearch(ActionEvent event) {
-        performSearch();
-    }
 
     private void performSearch() {
         String query = searchField.getText().trim();
