@@ -62,6 +62,7 @@ public class FxMusicPlayer {
     @FXML private Button playPauseButton;
     @FXML private Slider volumeSlider;
     @FXML private Label statusLabel;
+    @FXML private VBox mobilePlayerDock;
     @FXML private Button shuffleButton;
     @FXML private Button repeatButton;
     @FXML private Button autoRadioButton;
@@ -252,6 +253,10 @@ public class FxMusicPlayer {
                 if (song != null) addToQueueAndPlay(song);
             }
         });
+
+        if (mobilePlayerDock != null) {
+            mobilePlayerDock.setOnMouseClicked(this::handleOpenNowPlaying);
+        }
 
         if (searchField != null) {
             searchField.setOnAction(event -> performSearch());

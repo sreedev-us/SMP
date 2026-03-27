@@ -153,8 +153,7 @@
         </center>
 
         <bottom>
-            <VBox styleClass="player-controls mobile-player-dock" alignment="CENTER" spacing="10"
-                  onMouseClicked="#handleOpenNowPlaying">
+            <VBox fx:id="mobilePlayerDock" styleClass="player-controls mobile-player-dock" alignment="CENTER" spacing="10">
                 <padding><Insets top="12" bottom="16" left="18" right="18" /></padding>
 
                 <HBox alignment="CENTER" spacing="10" styleClass="mobile-progress-row">
