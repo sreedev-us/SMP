@@ -62,7 +62,7 @@ public class FxMusicPlayer {
     @FXML private Button playPauseButton;
     @FXML private Slider volumeSlider;
     @FXML private Label statusLabel;
-    @FXML private VBox mobilePlayerDock;
+    @FXML private HBox mobilePlayerDock;
     @FXML private Button shuffleButton;
     @FXML private Button repeatButton;
     @FXML private Button autoRadioButton;
@@ -88,6 +88,7 @@ public class FxMusicPlayer {
     @FXML private Label expandedCurrentTimeLabel;
     @FXML private Label expandedTotalTimeLabel;
     @FXML private ProgressBar expandedProgressBar;
+    @FXML private Slider expandedProgressSlider;
     @FXML private Button expandedPlayPauseButton;
     @FXML private Label expandedLyricsBadgeLabel;
     private Button mobileSettingsHostButton;
@@ -372,10 +373,14 @@ public class FxMusicPlayer {
 
     private void updatePlayPauseLabel() {
         if (playPauseButton != null) {
-            playPauseButton.setText(isPlaying ? "||" : "|>");
+            playPauseButton.setText("");
+            playPauseButton.getStyleClass().remove("playing");
+            if (isPlaying) playPauseButton.getStyleClass().add("playing");
         }
         if (expandedPlayPauseButton != null) {
-            expandedPlayPauseButton.setText(isPlaying ? "||" : "|>");
+            expandedPlayPauseButton.setText("");
+            expandedPlayPauseButton.getStyleClass().remove("playing");
+            if (isPlaying) expandedPlayPauseButton.getStyleClass().add("playing");
         }
     }
 
@@ -535,6 +540,9 @@ public class FxMusicPlayer {
         totalTimeLabel.setText("0:00");
         if (expandedProgressBar != null) {
             expandedProgressBar.setProgress(0);
+        }
+        if (expandedProgressSlider != null) {
+            expandedProgressSlider.setValue(0);
         }
         if (expandedCurrentTimeLabel != null) {
             expandedCurrentTimeLabel.setText("0:00");
@@ -834,6 +842,9 @@ public class FxMusicPlayer {
                     }
                     if (expandedProgressBar != null) {
                         expandedProgressBar.setProgress(progress);
+                    }
+                    if (expandedProgressSlider != null) {
+                        expandedProgressSlider.setValue(progress * 100);
                     }
                     if (expandedCurrentTimeLabel != null) {
                         expandedCurrentTimeLabel.setText(formatTime(current));
@@ -1630,4 +1641,42 @@ public class FxMusicPlayer {
         YtDlpStreamResolver.cleanup();
         System.out.println("FxMusicPlayer shut down.");
     }
+
+    // ── Mobile Bottom Nav ──────────────────────────────────────────────────────
+
+    @FXML
+    public void handleNavHome() {
+        setMobileSearchVisible(false);
+        hideSettingsOverlay();
+    }
+
+    @FXML
+    public void handleNavSearch() {
+        setMobileSearchVisible(true);
+        hideSettingsOverlay();
+    }
+
+    @FXML
+    public void handleNavLibrary() {
+        handleNavSearch();
+    }
+
+    @FXML
+    public void handleNavPremium() {
+        // Future: premium upsell overlay
+    }
+
+    // ── Theme Picker ───────────────────────────────────────────────────────────
+
+    private void applyTheme(String cssClass) {
+        if (appRoot == null) return;
+        appRoot.getStyleClass().removeIf(c -> c.startsWith("theme-"));
+        appRoot.getStyleClass().add(cssClass);
+    }
+
+    @FXML public void handleThemeRed()    { applyTheme("theme-red"); }
+    @FXML public void handleThemeYellow() { applyTheme("theme-yellow"); }
+    @FXML public void handleThemeGreen()  { applyTheme("theme-green"); }
+    @FXML public void handleThemeBlue()   { applyTheme("theme-blue"); }
+    @FXML public void handleThemeWhite()  { applyTheme("theme-white"); }
 }
