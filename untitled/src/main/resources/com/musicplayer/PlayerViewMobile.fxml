@@ -132,7 +132,7 @@
             <VBox styleClass="bottom-dock-container">
                 
                 <!-- Mini Player -->
-                <HBox fx:id="mobilePlayerDock" styleClass="mobile-mini-player" alignment="CENTER_LEFT" spacing="10" onMouseClicked="#handleOpenNowPlaying">
+                <HBox fx:id="mobilePlayerDock" styleClass="mobile-mini-player" alignment="CENTER_LEFT" spacing="10">
                     <StackPane styleClass="mini-art-shell">
                         <ImageView fx:id="albumArtView" fitHeight="40" fitWidth="40" preserveRatio="true" styleClass="mini-album-art" />
                         <ProgressIndicator fx:id="loadingIndicator" prefWidth="20" prefHeight="20" visible="false" />

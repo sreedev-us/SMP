@@ -256,7 +256,7 @@ public class FxMusicPlayer {
         });
 
         if (mobilePlayerDock != null) {
-            mobilePlayerDock.setOnMouseClicked(this::handleOpenNowPlaying);
+            mobilePlayerDock.setOnMouseClicked(this::handleMobileDockClick);
         }
 
         if (searchField != null) {
@@ -1152,8 +1152,7 @@ public class FxMusicPlayer {
         setMobileNowPlayingVisible(true);
     }
 
-    @FXML
-    public void handleOpenNowPlaying(MouseEvent event) {
+    public void handleMobileDockClick(MouseEvent event) {
         Object target = event.getTarget();
         if (target instanceof Node node) {
             while (node != null) {
