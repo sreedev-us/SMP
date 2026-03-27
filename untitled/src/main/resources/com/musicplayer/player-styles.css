@@ -1357,7 +1357,7 @@
     -fx-cursor: hand;
     -fx-opacity: 0.6;
 }
-.nav-item-active, .nav-item:hover {
+.nav-item-active, .nav-item:hover { -fx-cursor: hand;
     -fx-opacity: 1.0;
 }
 .nav-label {
@@ -1367,12 +1367,12 @@
 .nav-item-active .nav-label {
     -fx-text-fill: -theme-color;
 }
-.nav-icon {
+.nav-icon, .nav-icon-home, .nav-icon-search, .nav-icon-library, .nav-icon-premium {
     -fx-background-color: white;
     -fx-min-width: 24; -fx-min-height: 24;
     -fx-max-width: 24; -fx-max-height: 24;
 }
-.nav-item-active .nav-icon {
+.nav-item-active .nav-icon, .nav-icon-home, .nav-icon-search, .nav-icon-library, .nav-icon-premium {
     -fx-background-color: -theme-color;
 }
 .nav-icon-home { -fx-shape: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"; }
@@ -1397,7 +1397,7 @@
 }
 .invisible-hooks { -fx-background-color: transparent; -fx-padding: 0; }
 
-.category-card {
+.category-card, .cat-gray, .cat-red, .cat-teal, .cat-blue, .cat-green, .cat-yellow, .cat-purple, .cat-orange, .cat-indigo {
     -fx-background-radius: 6;
     -fx-padding: 12;
 }
@@ -1654,3 +1654,4 @@
     -fx-background-color: white;
     -fx-min-width: 20; -fx-min-height: 20; -fx-max-width: 20; -fx-max-height: 20;
 }
+

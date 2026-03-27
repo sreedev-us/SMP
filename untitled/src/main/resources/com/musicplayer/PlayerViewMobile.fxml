@@ -147,20 +147,20 @@
                 
                 <!-- True Bottom Nav -->
                 <HBox styleClass="mobile-bottom-nav" alignment="CENTER">
-                    <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS" styleClass="nav-item nav-item-active" onMouseClicked="#handleNavHome">
-                        <Region styleClass="nav-icon nav-icon-home" />
+                    <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS" styleClass="nav-item-active" onMouseClicked="#handleNavHome">
+                        <Region styleClass="nav-icon-home" />
                         <Label text="Home" styleClass="nav-label" />
                     </VBox>
                     <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS" styleClass="nav-item" onMouseClicked="#handleNavSearch">
-                        <Region styleClass="nav-icon nav-icon-search" />
+                        <Region styleClass="nav-icon-search" />
                         <Label text="Search" styleClass="nav-label" />
                     </VBox>
                     <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS" styleClass="nav-item" onMouseClicked="#handleNavLibrary">
-                        <Region styleClass="nav-icon nav-icon-library" />
+                        <Region styleClass="nav-icon-library" />
                         <Label text="Your Library" styleClass="nav-label" />
                     </VBox>
                     <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS" styleClass="nav-item" onMouseClicked="#handleNavPremium">
-                        <Region styleClass="nav-icon nav-icon-premium" />
+                        <Region styleClass="nav-icon-premium" />
                         <Label text="Premium" styleClass="nav-label" />
                     </VBox>
                 </HBox>
@@ -206,40 +206,40 @@
                         
                         <!-- Static Categories Grid matching Image 3 -->
                         <FlowPane hgap="12" vgap="12">
-                            <VBox styleClass="category-card cat-gray" prefWidth="180" minHeight="110">
+                            <VBox styleClass="cat-gray" prefWidth="180" minHeight="110">
                                 <Label text="Browse All" styleClass="cat-title" />
                                 <Region styleClass="cat-icon-grid" VBox.vgrow="ALWAYS" />
                             </VBox>
-                            <VBox styleClass="category-card cat-red" prefWidth="180" minHeight="110">
+                            <VBox styleClass="cat-red" prefWidth="180" minHeight="110">
                                 <Label text="New Releases" styleClass="cat-title" />
                                 <Region styleClass="cat-icon-star" VBox.vgrow="ALWAYS" />
                             </VBox>
-                            <VBox styleClass="category-card cat-teal" prefWidth="180" minHeight="110">
+                            <VBox styleClass="cat-teal" prefWidth="180" minHeight="110">
                                 <Label text="Charts" styleClass="cat-title" />
                                 <Region styleClass="cat-icon-chart" VBox.vgrow="ALWAYS" />
                             </VBox>
-                            <VBox styleClass="category-card cat-blue" prefWidth="180" minHeight="110">
+                            <VBox styleClass="cat-blue" prefWidth="180" minHeight="110">
                                 <Label text="Made For You" styleClass="cat-title" />
                                 <Label text="personalized" styleClass="cat-subtitle" />
                                 <Region styleClass="cat-icon-profile" VBox.vgrow="ALWAYS" />
                             </VBox>
-                            <VBox styleClass="category-card cat-green" prefWidth="180" minHeight="110">
+                            <VBox styleClass="cat-green" prefWidth="180" minHeight="110">
                                 <Label text="Podcasts" styleClass="cat-title" />
                                 <Region styleClass="cat-icon-mic" VBox.vgrow="ALWAYS" />
                             </VBox>
-                            <VBox styleClass="category-card cat-yellow" prefWidth="180" minHeight="110">
+                            <VBox styleClass="cat-yellow" prefWidth="180" minHeight="110">
                                 <Label text="Moods" styleClass="cat-title" />
                                 <Region styleClass="cat-icon-weather" VBox.vgrow="ALWAYS" />
                             </VBox>
-                            <VBox styleClass="category-card cat-purple" prefWidth="180" minHeight="110">
+                            <VBox styleClass="cat-purple" prefWidth="180" minHeight="110">
                                 <Label text="Decades" styleClass="cat-title" />
                                 <Region styleClass="cat-icon-years" VBox.vgrow="ALWAYS" />
                             </VBox>
-                            <VBox styleClass="category-card cat-orange" prefWidth="180" minHeight="110">
+                            <VBox styleClass="cat-orange" prefWidth="180" minHeight="110">
                                 <Label text="Live Events" styleClass="cat-title" />
                                 <Region styleClass="cat-icon-ticket" VBox.vgrow="ALWAYS" />
                             </VBox>
-                            <VBox styleClass="category-card cat-indigo" prefWidth="180" minHeight="110">
+                            <VBox styleClass="cat-indigo" prefWidth="180" minHeight="110">
                                 <Label text="Genres" styleClass="cat-title" />
                                 <Region styleClass="cat-icon-drums" VBox.vgrow="ALWAYS" />
                             </VBox>
@@ -459,5 +459,6 @@
     </StackPane>
 
 </StackPane>
+
 
 
