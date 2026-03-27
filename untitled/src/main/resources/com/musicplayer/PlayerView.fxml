@@ -65,7 +65,7 @@
                           VBox.vgrow="ALWAYS" minHeight="120" />
 
                 <Button text="Add without Playing" styleClass="add-button"
-                        maxWidth="Infinity" onAction="#handleAddSearchResult" />
+                        onAction="#handleAddSearchResult" />
 
                 <VBox minHeight="8" />
 

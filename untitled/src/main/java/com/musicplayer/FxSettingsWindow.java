@@ -147,7 +147,7 @@ public class FxSettingsWindow {
      * Saves all UI field values back into the SettingsManager.
      */
     @FXML
-    private void handleSave() {
+    public void handleSave() {
         // Audio
         settings.set("audio.volume", (int) volumeSlider.getValue());
         settings.set("audio.audio_quality", getQualityValue(audioQualityCombo.getValue()));
@@ -182,12 +182,12 @@ public class FxSettingsWindow {
     }
 
     @FXML
-    private void handleCancel() {
+    public void handleCancel() {
         close();
     }
 
     @FXML
-    private void handleReset() {
+    public void handleReset() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Reset all settings to default?", ButtonType.YES, ButtonType.NO);
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.YES) {
@@ -198,7 +198,7 @@ public class FxSettingsWindow {
     }
 
     @FXML
-    private void handleClearCache() {
+    public void handleClearCache() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to clear the cache?", ButtonType.YES, ButtonType.NO);
         alert.showAndWait().ifPresent(response -> {
             if (response == ButtonType.YES) {

@@ -77,7 +77,7 @@ public class FxLoginWindow extends Application {
      * Requires a valid credentials.json on the classpath.
      */
     @FXML
-    private void handleGoogleLogin() {
+    public void handleGoogleLogin() {
         if (AppPlatform.isMobile()) {
             statusLabel.setText("Google login is not available on Android yet. Please use Demo Mode for now.");
             return;
@@ -109,7 +109,7 @@ public class FxLoginWindow extends Application {
      * YouTube search won't work (no OAuth token) but the player UI opens instantly.
      */
     @FXML
-    private void handleDemoLogin() {
+    public void handleDemoLogin() {
         statusLabel.setText("Connecting in Demo Mode...");
         DemoAuthSystem demo = new DemoAuthSystem();
         boolean success = demo.googleLogin(); // always true
@@ -160,7 +160,7 @@ public class FxLoginWindow extends Application {
      * This method is called by FXML when the "Close" button is clicked.
      */
     @FXML
-    private void handleClose() {
+    public void handleClose() {
         if (playerController != null) {
             playerController.shutdown();
         }

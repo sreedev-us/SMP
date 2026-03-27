@@ -139,7 +139,7 @@
                 <ListView fx:id="searchResultsList" styleClass="results-list mobile-results-list" prefHeight="220" />
             </VBox>
             <Button text="Add without Playing" styleClass="add-button mobile-wide-button"
-                    maxWidth="Infinity" onAction="#handleAddSearchResult" />
+                    onAction="#handleAddSearchResult" />
             <VBox styleClass="mobile-pane-card" spacing="8">
                 <Label text="QUEUE" styleClass="section-label" />
                 <ListView fx:id="playlistView" styleClass="playlist-view mobile-results-list" prefHeight="170" />
