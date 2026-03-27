@@ -351,6 +351,24 @@
     -fx-padding: 0 0 6 0;
 }
 
+.mobile-search-overlay {
+    -fx-alignment: top-center;
+    -fx-padding: 18 14 14 14;
+}
+
+.mobile-search-shell {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(7, 17, 29, 0.98), rgba(12, 25, 40, 0.98));
+    -fx-background-radius: 26;
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-border-radius: 26;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.40), 28, 0.22, 0, 10);
+}
+
+.mobile-search-header {
+    -fx-padding: 0 0 2 0;
+}
+
 .mobile-pane-card {
     -fx-background-color: linear-gradient(to bottom right, rgba(14, 27, 43, 0.95), rgba(9, 19, 31, 0.88));
     -fx-background-radius: 22;
@@ -879,7 +897,7 @@
 
 .mobile .sidebar {
     -fx-min-width: 250;
-    -fx-max-width: 250;
+    -fx-max-width: 520;
     -fx-pref-width: 250;
 }
 

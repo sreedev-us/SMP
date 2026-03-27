@@ -75,6 +75,7 @@ public class FxMusicPlayer {
     @FXML private Label lyricsSourceLabel;
     @FXML private VBox sidebar;
     @FXML private Button menuButton;
+    @FXML private StackPane mobileSearchOverlay;
     @FXML private StackPane appRoot;
     @FXML private StackPane settingsOverlay;
     @FXML private VBox settingsContainer;
@@ -267,10 +268,6 @@ public class FxMusicPlayer {
     }
 
     private void updateResponsiveUI(boolean mobile) {
-        // Assuming 'sidebar' and 'menuButton' are FXML components declared elsewhere
-        // For this code to compile, you would need to add:
-        // @FXML private VBox sidebar;
-        // @FXML private Button menuButton;
         if (sidebar.getScene() == null) return;
         
         if (mobile) {
@@ -279,12 +276,15 @@ public class FxMusicPlayer {
             }
             menuButton.setVisible(true);
             menuButton.setManaged(true);
-            sidebar.setVisible(false);
-            sidebar.setManaged(false);
+            setMobileSearchVisible(false);
         } else {
             sidebar.getScene().getRoot().getStyleClass().remove("mobile");
             menuButton.setVisible(false);
             menuButton.setManaged(false);
+            if (mobileSearchOverlay != null) {
+                mobileSearchOverlay.setVisible(false);
+                mobileSearchOverlay.setManaged(false);
+            }
             sidebar.setVisible(true);
             sidebar.setManaged(true);
         }
@@ -292,9 +292,10 @@ public class FxMusicPlayer {
 
     @FXML
     public void handleToggleSidebar() {
-        // Assuming 'sidebar' is an FXML component declared elsewhere
-        // For this code to compile, you would need to add:
-        // @FXML private VBox sidebar;
+        if (AppPlatform.isMobile() && mobileSearchOverlay != null) {
+            setMobileSearchVisible(!mobileSearchOverlay.isVisible());
+            return;
+        }
         if (sidebar != null) {
             sidebar.setVisible(!sidebar.isVisible());
             sidebar.setManaged(sidebar.isVisible());
@@ -579,6 +580,9 @@ public class FxMusicPlayer {
         audioPlayer.stop();
         playMusic();
                 updateStatus("Playing: " + song.getTitle());
+        if (AppPlatform.isMobile()) {
+            setMobileSearchVisible(false);
+        }
         
         if (autoRadioEnabled) {
             autoFetchMoreSongs(song, false);
@@ -978,6 +982,9 @@ public class FxMusicPlayer {
         if (song != null) {
             playlist.add(song);
             updateStatus("Added: " + song.getTitle());
+            if (AppPlatform.isMobile()) {
+                setMobileSearchVisible(false);
+            }
             if (autoRadioEnabled) {
                 autoFetchMoreSongs(song, false);
             }
@@ -1029,6 +1036,9 @@ public class FxMusicPlayer {
 
     @FXML
     public void handleOpenSettings() {
+        if (AppPlatform.isMobile()) {
+            setMobileSearchVisible(false);
+        }
         FxSettingsWindow settingsView = new FxSettingsWindow(auth, settings, cache);
         settingsView.setOnClose(this::hideSettingsOverlay);
         settingsView.setOnSaved(() -> {
@@ -1061,6 +1071,17 @@ public class FxMusicPlayer {
     private void updateStatus(String msg) {
         if (statusLabel != null) statusLabel.setText(msg);
         if (mobileSettingsStatusLabel != null) mobileSettingsStatusLabel.setText(msg);
+    }
+
+    private void setMobileSearchVisible(boolean visible) {
+        if (mobileSearchOverlay != null) {
+            mobileSearchOverlay.setVisible(visible);
+            mobileSearchOverlay.setManaged(visible);
+        }
+        if (sidebar != null) {
+            sidebar.setVisible(visible);
+            sidebar.setManaged(visible);
+        }
     }
 
     private void loadSearchHistory() {

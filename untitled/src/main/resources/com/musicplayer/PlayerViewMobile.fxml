@@ -21,44 +21,19 @@
 
     <BorderPane styleClass="main-container">
         <top>
-            <VBox spacing="12" styleClass="mobile-top-shell">
-                <HBox styleClass="header-bar mobile-header-bar" alignment="CENTER_LEFT" spacing="10">
-                    <padding><Insets left="18" right="18" top="10" bottom="10" /></padding>
-                    <Button fx:id="menuButton" text="Browse" styleClass="mobile-header-button"
-                            onAction="#handleToggleSidebar" />
-                    <Label text="HP" styleClass="header-logo" />
-                    <VBox spacing="2">
-                        <Label text="Harmony Pro" styleClass="header-title" />
-                        <Label fx:id="userInfoLabel" text="Not Logged In" styleClass="user-info-label mobile-user-badge" />
-                    </VBox>
-                    <HBox HBox.hgrow="ALWAYS" />
-                    <Button text="Tune" styleClass="mobile-header-button mobile-settings-trigger"
-                            onAction="#handleOpenSettings" />
-                </HBox>
-
-                <VBox fx:id="sidebar" styleClass="sidebar mobile-browser-panel" spacing="14">
-                    <padding><Insets top="0" left="18" right="18" bottom="16" /></padding>
-                    <HBox spacing="8" alignment="CENTER_LEFT">
-                        <TextField fx:id="searchField" promptText="Search YouTube..."
-                                   styleClass="search-field" HBox.hgrow="ALWAYS" />
-                        <Button text="Go" styleClass="search-btn" onAction="#handleSearch" />
-                    </HBox>
-                    <VBox fx:id="searchHistorySection" spacing="8" visible="false" managed="false">
-                        <Label text="RECENT SEARCHES" styleClass="section-label" />
-                        <FlowPane fx:id="searchHistoryContainer" hgap="8" vgap="8" />
-                    </VBox>
-                    <VBox styleClass="mobile-pane-card" spacing="8">
-                        <Label text="RESULTS" styleClass="section-label" />
-                        <ListView fx:id="searchResultsList" styleClass="results-list mobile-results-list" prefHeight="168" />
-                    </VBox>
-                    <Button text="Add without Playing" styleClass="add-button mobile-wide-button"
-                            maxWidth="Infinity" onAction="#handleAddSearchResult" />
-                    <VBox styleClass="mobile-pane-card" spacing="8">
-                        <Label text="QUEUE" styleClass="section-label" />
-                        <ListView fx:id="playlistView" styleClass="playlist-view mobile-results-list" prefHeight="132" />
-                    </VBox>
+            <HBox styleClass="header-bar mobile-header-bar" alignment="CENTER_LEFT" spacing="10">
+                <padding><Insets left="18" right="18" top="10" bottom="10" /></padding>
+                <Button fx:id="menuButton" text="Search" styleClass="mobile-header-button"
+                        onAction="#handleToggleSidebar" />
+                <Label text="HP" styleClass="header-logo" />
+                <VBox spacing="2">
+                    <Label text="Harmony Pro" styleClass="header-title" />
+                    <Label fx:id="userInfoLabel" text="Not Logged In" styleClass="user-info-label mobile-user-badge" />
                 </VBox>
-            </VBox>
+                <HBox HBox.hgrow="ALWAYS" />
+                <Button text="Tune" styleClass="mobile-header-button mobile-settings-trigger"
+                        onAction="#handleOpenSettings" />
+            </HBox>
         </top>
 
         <center>
@@ -141,9 +116,39 @@
         </bottom>
     </BorderPane>
 
+    <StackPane fx:id="mobileSearchOverlay" styleClass="overlay-backdrop mobile-search-overlay"
+               visible="false" managed="false">
+        <VBox fx:id="sidebar" styleClass="sidebar mobile-search-shell" spacing="14" maxWidth="520">
+            <padding><Insets top="18" left="18" right="18" bottom="18" /></padding>
+            <HBox alignment="CENTER_LEFT" spacing="10" styleClass="mobile-search-header">
+                <Label text="Search & Queue" styleClass="settings-card-title" />
+                <HBox HBox.hgrow="ALWAYS" />
+                <Button text="Close" styleClass="mobile-header-button" onAction="#handleToggleSidebar" />
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <TextField fx:id="searchField" promptText="Search YouTube..."
+                           styleClass="search-field" HBox.hgrow="ALWAYS" />
+                <Button text="Go" styleClass="search-btn" onAction="#handleSearch" />
+            </HBox>
+            <VBox fx:id="searchHistorySection" spacing="8" visible="false" managed="false">
+                <Label text="RECENT SEARCHES" styleClass="section-label" />
+                <FlowPane fx:id="searchHistoryContainer" hgap="8" vgap="8" />
+            </VBox>
+            <VBox styleClass="mobile-pane-card" spacing="8">
+                <Label text="RESULTS" styleClass="section-label" />
+                <ListView fx:id="searchResultsList" styleClass="results-list mobile-results-list" prefHeight="220" />
+            </VBox>
+            <Button text="Add without Playing" styleClass="add-button mobile-wide-button"
+                    maxWidth="Infinity" onAction="#handleAddSearchResult" />
+            <VBox styleClass="mobile-pane-card" spacing="8">
+                <Label text="QUEUE" styleClass="section-label" />
+                <ListView fx:id="playlistView" styleClass="playlist-view mobile-results-list" prefHeight="170" />
+            </VBox>
+        </VBox>
+    </StackPane>
+
     <StackPane fx:id="settingsOverlay" styleClass="overlay-backdrop mobile-settings-overlay"
-               visible="false" managed="false" onMouseClicked="#handleDismissSettingsOverlay">
-        <VBox fx:id="settingsContainer" styleClass="settings-shell mobile-settings-shell"
-              onMouseClicked="#handleConsumeOverlayClick" maxWidth="480" />
+               visible="false" managed="false">
+        <VBox fx:id="settingsContainer" styleClass="settings-shell mobile-settings-shell" maxWidth="480" />
     </StackPane>
 </StackPane>
