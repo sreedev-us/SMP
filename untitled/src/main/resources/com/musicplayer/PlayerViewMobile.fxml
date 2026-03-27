@@ -121,7 +121,7 @@
         <VBox fx:id="sidebar" styleClass="sidebar mobile-search-shell" spacing="14" maxWidth="520">
             <padding><Insets top="18" left="18" right="18" bottom="18" /></padding>
             <HBox alignment="CENTER_LEFT" spacing="10" styleClass="mobile-search-header">
-                <Label text="Search & Queue" styleClass="settings-card-title" />
+                <Label text="Search &amp; Queue" styleClass="settings-card-title" />
                 <HBox HBox.hgrow="ALWAYS" />
                 <Button text="Close" styleClass="mobile-header-button" onAction="#handleToggleSidebar" />
             </HBox>
