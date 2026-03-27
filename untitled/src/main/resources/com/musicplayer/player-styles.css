@@ -670,6 +670,107 @@
     -fx-padding: 14;
 }
 
+.mobile-now-playing-overlay {
+    -fx-padding: 10 12 20 12;
+}
+
+.mobile-now-playing-screen {
+    -fx-background-color:
+        radial-gradient(center 50% 16%, radius 52%, rgba(29, 185, 84, 0.14), transparent),
+        linear-gradient(to bottom, rgba(8, 12, 11, 0.995), rgba(15, 20, 19, 0.995));
+    -fx-background-radius: 34;
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-border-radius: 34;
+    -fx-padding: 18 18 22 18;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.48), 40, 0.24, 0, 12);
+}
+
+.mobile-now-playing-header {
+    -fx-padding: 2 0 6 0;
+}
+
+.mobile-now-playing-title {
+    -fx-text-fill: #f6fbff;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.mobile-now-playing-art-shell {
+    -fx-padding: 12;
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-background-radius: 32;
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-border-radius: 32;
+}
+
+.mobile-expanded-art {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.36), 34, 0.22, 0, 8);
+}
+
+.mobile-now-playing-copy {
+    -fx-padding: 4 2 0 2;
+}
+
+.mobile-expanded-song-title {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+}
+
+.mobile-expanded-artist {
+    -fx-text-fill: rgba(255, 255, 255, 0.68);
+    -fx-font-size: 15px;
+}
+
+.mobile-expanded-badge {
+    -fx-background-color: rgba(29, 185, 84, 0.16);
+    -fx-background-radius: 999;
+    -fx-padding: 6 10;
+    -fx-text-fill: #cffff0;
+    -fx-font-size: 11px;
+}
+
+.mobile-expanded-progress-shell {
+    -fx-padding: 6 0 0 0;
+}
+
+.mobile-expanded-progress-shell .progress-bar {
+    -fx-accent: #1db954;
+}
+
+.mobile-expanded-progress-shell .track {
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-background-radius: 999;
+}
+
+.mobile-expanded-progress-shell .bar {
+    -fx-background-color: linear-gradient(to right, #1db954, #71f0ad);
+    -fx-background-radius: 999;
+}
+
+.mobile-expanded-transport-row {
+    -fx-padding: 4 0;
+}
+
+.mobile-expanded-side-button {
+    -fx-min-width: 52;
+    -fx-min-height: 52;
+    -fx-font-size: 13px;
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 26;
+}
+
+.mobile-expanded-play-button {
+    -fx-min-width: 82;
+    -fx-min-height: 82;
+    -fx-font-size: 30px;
+    -fx-background-color: linear-gradient(to bottom right, #1ed760, #1db954);
+}
+
+.mobile-expanded-actions-row {
+    -fx-padding: 4 0 0 0;
+}
+
 .mobile-settings-shell {
     -fx-max-width: 480;
     -fx-spacing: 0;

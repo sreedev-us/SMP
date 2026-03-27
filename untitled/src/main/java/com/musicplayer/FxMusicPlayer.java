@@ -13,6 +13,7 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.Node;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -77,8 +78,17 @@ public class FxMusicPlayer {
     @FXML private Button menuButton;
     @FXML private StackPane mobileSearchOverlay;
     @FXML private StackPane appRoot;
+    @FXML private StackPane mobileNowPlayingOverlay;
     @FXML private StackPane settingsOverlay;
     @FXML private VBox settingsContainer;
+    @FXML private ImageView expandedAlbumArtView;
+    @FXML private Label expandedSongTitleLabel;
+    @FXML private Label expandedArtistLabel;
+    @FXML private Label expandedCurrentTimeLabel;
+    @FXML private Label expandedTotalTimeLabel;
+    @FXML private ProgressBar expandedProgressBar;
+    @FXML private Button expandedPlayPauseButton;
+    @FXML private Label expandedLyricsBadgeLabel;
     private Button mobileSettingsHostButton;
     private Button mobileSettingsJoinButton;
     private TextField mobileSettingsLinkField;
@@ -324,12 +334,22 @@ public class FxMusicPlayer {
     private void setAlbumArt(String thumbnailUrl) {
         try {
             if (thumbnailUrl != null && !thumbnailUrl.isEmpty()) {
-                albumArtView.setImage(new Image(thumbnailUrl, true));
+                Image image = new Image(thumbnailUrl, true);
+                albumArtView.setImage(image);
+                if (expandedAlbumArtView != null) {
+                    expandedAlbumArtView.setImage(image);
+                }
             } else {
                 albumArtView.setImage(defaultAlbumArt);
+                if (expandedAlbumArtView != null) {
+                    expandedAlbumArtView.setImage(defaultAlbumArt);
+                }
             }
         } catch (Exception e) {
             albumArtView.setImage(defaultAlbumArt);
+            if (expandedAlbumArtView != null) {
+                expandedAlbumArtView.setImage(defaultAlbumArt);
+            }
         }
     }
 
@@ -348,6 +368,9 @@ public class FxMusicPlayer {
     private void updatePlayPauseLabel() {
         if (playPauseButton != null) {
             playPauseButton.setText(isPlaying ? "||" : "|>");
+        }
+        if (expandedPlayPauseButton != null) {
+            expandedPlayPauseButton.setText(isPlaying ? "||" : "|>");
         }
     }
 
@@ -504,6 +527,16 @@ public class FxMusicPlayer {
             progressBar.setProgress(0);
         }
         currentTimeLabel.setText("0:00");
+        totalTimeLabel.setText("0:00");
+        if (expandedProgressBar != null) {
+            expandedProgressBar.setProgress(0);
+        }
+        if (expandedCurrentTimeLabel != null) {
+            expandedCurrentTimeLabel.setText("0:00");
+        }
+        if (expandedTotalTimeLabel != null) {
+            expandedTotalTimeLabel.setText("0:00");
+        }
         resetLyricsProgress();
         lanSync.notifyStop();
     }
@@ -794,6 +827,15 @@ public class FxMusicPlayer {
                     if (progressBar != null) {
                         progressBar.setProgress(progress);
                     }
+                    if (expandedProgressBar != null) {
+                        expandedProgressBar.setProgress(progress);
+                    }
+                    if (expandedCurrentTimeLabel != null) {
+                        expandedCurrentTimeLabel.setText(formatTime(current));
+                    }
+                    if (expandedTotalTimeLabel != null) {
+                        expandedTotalTimeLabel.setText(formatTime(total));
+                    }
                 }
                 syncLyricsToPosition(current);
             }
@@ -1038,6 +1080,7 @@ public class FxMusicPlayer {
     public void handleOpenSettings() {
         if (AppPlatform.isMobile()) {
             setMobileSearchVisible(false);
+            setMobileNowPlayingVisible(false);
         }
         FxSettingsWindow settingsView = new FxSettingsWindow(auth, settings, cache);
         settingsView.setOnClose(this::hideSettingsOverlay);
@@ -1081,6 +1124,41 @@ public class FxMusicPlayer {
         if (sidebar != null) {
             sidebar.setVisible(visible);
             sidebar.setManaged(visible);
+        }
+    }
+
+    @FXML
+    public void handleOpenNowPlaying() {
+        if (!AppPlatform.isMobile()) {
+            return;
+        }
+        setMobileSearchVisible(false);
+        setMobileNowPlayingVisible(true);
+    }
+
+    @FXML
+    public void handleOpenNowPlaying(MouseEvent event) {
+        Object target = event.getTarget();
+        if (target instanceof Node node) {
+            while (node != null) {
+                if (node instanceof ButtonBase) {
+                    return;
+                }
+                node = node.getParent();
+            }
+        }
+        handleOpenNowPlaying();
+    }
+
+    @FXML
+    public void handleCloseNowPlaying() {
+        setMobileNowPlayingVisible(false);
+    }
+
+    private void setMobileNowPlayingVisible(boolean visible) {
+        if (mobileNowPlayingOverlay != null) {
+            mobileNowPlayingOverlay.setVisible(visible);
+            mobileNowPlayingOverlay.setManaged(visible);
         }
     }
 
@@ -1351,6 +1429,12 @@ public class FxMusicPlayer {
         if (song == null) {
             songTitleLabel.setText("No song selected");
             artistLabel.setText("Select a song from the playlist");
+            if (expandedSongTitleLabel != null) {
+                expandedSongTitleLabel.setText("No song selected");
+            }
+            if (expandedArtistLabel != null) {
+                expandedArtistLabel.setText("Select a song from the playlist");
+            }
             setAlbumArt(null);
             playlistView.getSelectionModel().clearSelection();
             lanSync.clearWebTrackInfo();
@@ -1358,6 +1442,12 @@ public class FxMusicPlayer {
         } else {
             songTitleLabel.setText(song.getTitle());
             artistLabel.setText(song.getChannel() != null ? song.getChannel() : "Unknown Artist");
+            if (expandedSongTitleLabel != null) {
+                expandedSongTitleLabel.setText(song.getTitle());
+            }
+            if (expandedArtistLabel != null) {
+                expandedArtistLabel.setText(song.getChannel() != null ? song.getChannel() : "Unknown Artist");
+            }
             playlistView.getSelectionModel().select(song);
             setAlbumArt(song.getThumbnailUrl());
             lanSync.updateWebTrackInfo(song.getTitle(), artistLabel.getText());
@@ -1403,6 +1493,9 @@ public class FxMusicPlayer {
             ? "Lyrics move with the music."
             : "Lyrics found, but this track does not include timing.");
                 lyricsSourceLabel.setText((currentLyricsSynced ? "Synced" : "Static") + " - " + lyricsData.getSource());
+        if (expandedLyricsBadgeLabel != null) {
+            expandedLyricsBadgeLabel.setText(currentLyricsSynced ? "Lyrics synced" : "Lyrics available");
+        }
 
         for (LyricsLine line : currentLyrics) {
             Label lyricLine = new Label(line.getText());
@@ -1436,6 +1529,9 @@ public class FxMusicPlayer {
 
         lyricsHeadlineLabel.setText(headline);
         lyricsSourceLabel.setText(sourceText);
+        if (expandedLyricsBadgeLabel != null) {
+            expandedLyricsBadgeLabel.setText(sourceText);
+        }
         lyricsContainer.getChildren().clear();
 
         Label placeholder = new Label("Timed lyrics will lock onto the song here when they are available.");

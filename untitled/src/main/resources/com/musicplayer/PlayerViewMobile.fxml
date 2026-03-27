@@ -82,7 +82,7 @@
                                 </VBox>
                                 <VBox styleClass="mobile-discovery-card discover-card-spotlight" HBox.hgrow="ALWAYS" spacing="10">
                                     <Label text="Taylor Swift" styleClass="mobile-shortcut-title" />
-                                    <Label text="Olivia Rodrigo • SZA • more" styleClass="mobile-shortcut-subtitle" wrapText="true" />
+                                    <Label text="Olivia Rodrigo, SZA, more" styleClass="mobile-shortcut-subtitle" wrapText="true" />
                                 </VBox>
                             </HBox>
 
@@ -153,7 +153,8 @@
         </center>
 
         <bottom>
-            <VBox styleClass="player-controls mobile-player-dock" alignment="CENTER" spacing="10">
+            <VBox styleClass="player-controls mobile-player-dock" alignment="CENTER" spacing="10"
+                  onMouseClicked="#handleOpenNowPlaying">
                 <padding><Insets top="12" bottom="16" left="18" right="18" /></padding>
 
                 <HBox alignment="CENTER" spacing="10" styleClass="mobile-progress-row">
@@ -233,5 +234,60 @@
     <StackPane fx:id="settingsOverlay" styleClass="overlay-backdrop mobile-settings-overlay"
                visible="false" managed="false">
         <VBox fx:id="settingsContainer" styleClass="settings-shell mobile-settings-shell" maxWidth="480" />
+    </StackPane>
+
+    <StackPane fx:id="mobileNowPlayingOverlay" styleClass="overlay-backdrop mobile-now-playing-overlay"
+               visible="false" managed="false">
+        <VBox styleClass="mobile-now-playing-screen" spacing="18">
+            <HBox alignment="CENTER_LEFT" spacing="10" styleClass="mobile-now-playing-header">
+                <Button text="Done" styleClass="mobile-header-button" onAction="#handleCloseNowPlaying" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Label text="Now Playing" styleClass="mobile-now-playing-title" />
+                <Region HBox.hgrow="ALWAYS" />
+                <Button text="Tune" styleClass="mobile-header-button" onAction="#handleOpenSettings" />
+            </HBox>
+
+            <StackPane styleClass="mobile-now-playing-art-shell">
+                <ImageView fx:id="expandedAlbumArtView"
+                           fitHeight="300.0" fitWidth="300.0"
+                           preserveRatio="true" styleClass="album-art mobile-expanded-art" />
+            </StackPane>
+
+            <VBox alignment="CENTER_LEFT" spacing="6" styleClass="mobile-now-playing-copy">
+                <Label fx:id="expandedSongTitleLabel" text="No song selected"
+                       styleClass="mobile-expanded-song-title" wrapText="true" />
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label fx:id="expandedArtistLabel" text="Select a song from the playlist"
+                           styleClass="mobile-expanded-artist" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Label fx:id="expandedLyricsBadgeLabel" text="Waiting for track"
+                           styleClass="mobile-expanded-badge" />
+                </HBox>
+            </VBox>
+
+            <VBox spacing="10" styleClass="mobile-expanded-progress-shell">
+                <ProgressBar fx:id="expandedProgressBar" progress="0.0" />
+                <HBox alignment="CENTER" spacing="10">
+                    <Label fx:id="expandedCurrentTimeLabel" text="0:00" styleClass="time-label" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Label fx:id="expandedTotalTimeLabel" text="0:00" styleClass="time-label" />
+                </HBox>
+            </VBox>
+
+            <HBox alignment="CENTER" spacing="18" styleClass="mobile-expanded-transport-row">
+                <Button text="Mix" styleClass="icon-button mobile-expanded-side-button" onAction="#handleToggleShuffle" />
+                <Button text="|&lt;" styleClass="icon-button mobile-expanded-side-button" onAction="#handlePrevious" />
+                <Button fx:id="expandedPlayPauseButton" text="|>" styleClass="play-pause-button mobile-expanded-play-button"
+                        onAction="#handlePlayPause" />
+                <Button text="&gt;|" styleClass="icon-button mobile-expanded-side-button" onAction="#handleNext" />
+                <Button text="Loop" styleClass="icon-button mobile-expanded-side-button" onAction="#handleToggleRepeat" />
+            </HBox>
+
+            <HBox alignment="CENTER" spacing="12" styleClass="mobile-expanded-actions-row">
+                <Button text="Search" styleClass="mobile-ghost-button" onAction="#handleToggleSidebar" />
+                <Button text="Lyrics" styleClass="mobile-ghost-button" onAction="#handleCloseNowPlaying" />
+                <Button text="Done" styleClass="mobile-ghost-button" onAction="#handleCloseNowPlaying" />
+            </HBox>
+        </VBox>
     </StackPane>
 </StackPane>
