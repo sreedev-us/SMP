@@ -15,6 +15,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.animation.KeyFrame;
@@ -77,6 +78,11 @@ public class FxMusicPlayer {
     @FXML private StackPane appRoot;
     @FXML private StackPane settingsOverlay;
     @FXML private VBox settingsContainer;
+    private Button mobileSettingsHostButton;
+    private Button mobileSettingsJoinButton;
+    private TextField mobileSettingsLinkField;
+    private Label mobileSettingsPeerLabel;
+    private Label mobileSettingsStatusLabel;
 
     // --- State ---
     private final ObservableList<SongData> playlist = FXCollections.observableArrayList();
@@ -152,7 +158,10 @@ public class FxMusicPlayer {
                     updateStatus("LAN session ended.");
                     updateToggleButtonStyle(hostButton, false);
                     updateToggleButtonStyle(joinButton, false);
-                    if (peerCountLabel != null) peerCountLabel.setText("");
+                    updateToggleButtonStyle(mobileSettingsHostButton, false);
+                    updateToggleButtonStyle(mobileSettingsJoinButton, false);
+                    updatePeerLabel(0);
+                    updatePublicLinkFields("", "Generating tunnel link...", false);
                 });
             }
             @Override public void onRemoteCommand(String cmd) {
@@ -347,6 +356,12 @@ public class FxMusicPlayer {
         }
         if (joinButton != null) {
             joinButton.setText(lanSync.getMode() == LanSyncManager.Mode.CLIENT ? "Leave" : "Connect");
+        }
+        if (mobileSettingsHostButton != null) {
+            mobileSettingsHostButton.setText(lanSync.getMode() == LanSyncManager.Mode.HOST ? "Stop Sync" : "Host Session");
+        }
+        if (mobileSettingsJoinButton != null) {
+            mobileSettingsJoinButton.setText(lanSync.getMode() == LanSyncManager.Mode.CLIENT ? "Leave Session" : "Join Session");
         }
     }
 
@@ -807,14 +822,11 @@ public class FxMusicPlayer {
         if (lanSync.getMode() == LanSyncManager.Mode.HOST) {
             lanSync.stopSession();
             updateToggleButtonStyle(hostButton, false);
+            updateToggleButtonStyle(mobileSettingsHostButton, false);
             updateSessionButtonLabels();
             updatePeerLabel(0);
                         updateStatus("LAN session stopped.");
-            if (publicLinkField != null) {
-                publicLinkField.setVisible(false);
-                publicLinkField.setManaged(false);
-                publicLinkField.setText("");
-            }
+            updatePublicLinkFields("", "Generating tunnel link...", false);
         } else {
             new Thread(() -> {
                 try {
@@ -822,15 +834,12 @@ public class FxMusicPlayer {
                     Platform.runLater(() -> {
                         updateToggleButtonStyle(hostButton, true);
                         updateToggleButtonStyle(joinButton, false);
+                        updateToggleButtonStyle(mobileSettingsHostButton, true);
+                        updateToggleButtonStyle(mobileSettingsJoinButton, false);
                         updateSessionButtonLabels();
                                                 updateStatus("Hosting on " + ip + " | Starting public tunnel...");
                         updatePeerLabel(0);
-                        if (publicLinkField != null) {
-                            publicLinkField.setText("");
-                            publicLinkField.setPromptText("Generating tunnel link...");
-                            publicLinkField.setVisible(true);
-                            publicLinkField.setManaged(true);
-                        }
+                        updatePublicLinkFields("", "Generating tunnel link...", true);
                     });
                     
                     // Automatically launch the public tunnel so users don't have to use CMD
@@ -838,9 +847,7 @@ public class FxMusicPlayer {
                         Platform.runLater(() -> {
                             if (url.startsWith("http")) {
                                 updateStatus("Public link ready. Share it with friends.");
-                                if (publicLinkField != null) {
-                                    publicLinkField.setText(url);
-                                }
+                                updatePublicLinkFields(url, "Public link ready", true);
                             } else {
                                 updateStatus(url);
                             }
@@ -859,8 +866,10 @@ public class FxMusicPlayer {
         if (lanSync.getMode() == LanSyncManager.Mode.CLIENT) {
             lanSync.stopSession();
             updateToggleButtonStyle(joinButton, false);
+            updateToggleButtonStyle(mobileSettingsJoinButton, false);
             updateSessionButtonLabels();
             updateStatus("Left LAN session.");
+            updatePublicLinkFields("", "Generating tunnel link...", false);
             return;
         }
         // First try auto-discovery, then fall back to manual IP entry
@@ -890,8 +899,11 @@ public class FxMusicPlayer {
                         Platform.runLater(() -> {
                             updateToggleButtonStyle(joinButton, true);
                             updateToggleButtonStyle(hostButton, false);
+                            updateToggleButtonStyle(mobileSettingsJoinButton, true);
+                            updateToggleButtonStyle(mobileSettingsHostButton, false);
                             updateSessionButtonLabels();
                             updateStatus("Joined LAN session at " + finalIp + ". Waiting for host to play...");
+                            updatePublicLinkFields("", "Host session controls the share link", false);
                         });
                     } catch (Exception e) {
                         Platform.runLater(() -> updateStatus("Could not join: " + e.getMessage()));
@@ -904,6 +916,9 @@ public class FxMusicPlayer {
     private void updatePeerLabel(int count) {
         if (peerCountLabel != null) {
             peerCountLabel.setText(count > 0 ? count + " device" + (count == 1 ? "" : "s") + " connected" : "");
+        }
+        if (mobileSettingsPeerLabel != null) {
+            mobileSettingsPeerLabel.setText(count > 0 ? count + " device" + (count == 1 ? "" : "s") + " connected" : "No peers connected yet");
         }
     }
 
@@ -1014,10 +1029,6 @@ public class FxMusicPlayer {
 
     @FXML
     public void handleOpenSettings() {
-        if (AppPlatform.isMobile()) {
-            updateStatus("Settings overlay is desktop-only for now.");
-            return;
-        }
         FxSettingsWindow settingsView = new FxSettingsWindow(auth, settings, cache);
         settingsView.setOnClose(this::hideSettingsOverlay);
         settingsView.setOnSaved(() -> {
@@ -1027,7 +1038,7 @@ public class FxMusicPlayer {
 
         try {
             Parent settingsRoot = settingsView.createView();
-            settingsContainer.getChildren().setAll(settingsRoot);
+            settingsContainer.getChildren().setAll(buildSettingsOverlayContent(settingsRoot));
             settingsOverlay.setVisible(true);
             settingsOverlay.setManaged(true);
         } catch (IOException e) {
@@ -1049,6 +1060,7 @@ public class FxMusicPlayer {
 
     private void updateStatus(String msg) {
         if (statusLabel != null) statusLabel.setText(msg);
+        if (mobileSettingsStatusLabel != null) mobileSettingsStatusLabel.setText(msg);
     }
 
     private void loadSearchHistory() {
@@ -1179,6 +1191,131 @@ public class FxMusicPlayer {
         settingsOverlay.setVisible(false);
         settingsOverlay.setManaged(false);
         settingsContainer.getChildren().clear();
+        mobileSettingsHostButton = null;
+        mobileSettingsJoinButton = null;
+        mobileSettingsLinkField = null;
+        mobileSettingsPeerLabel = null;
+        mobileSettingsStatusLabel = null;
+    }
+
+    private Parent buildSettingsOverlayContent(Parent settingsRoot) {
+        if (!AppPlatform.isMobile()) {
+            return settingsRoot;
+        }
+
+        VBox shell = new VBox(16);
+        shell.getStyleClass().add("mobile-settings-content");
+
+        HBox header = new HBox(10);
+        header.getStyleClass().add("mobile-settings-header");
+        Label title = new Label("Settings");
+        title.getStyleClass().add("settings-card-title");
+        Label copy = new Label("Playback controls stay light on mobile. Sync actions live here.");
+        copy.getStyleClass().add("settings-card-copy");
+        copy.setWrapText(true);
+        VBox heading = new VBox(4, title, copy);
+        Button closeButton = new Button("Done");
+        closeButton.getStyleClass().addAll("control-button", "mobile-settings-close");
+        closeButton.setOnAction(event -> hideSettingsOverlay());
+        HBox.setHgrow(heading, Priority.ALWAYS);
+        header.getChildren().addAll(heading, closeButton);
+
+        VBox syncCard = buildMobileSyncCard();
+
+        ScrollPane settingsScroll = new ScrollPane(settingsRoot);
+        settingsScroll.setFitToWidth(true);
+        settingsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        settingsScroll.getStyleClass().add("mobile-settings-scroll");
+        VBox.setVgrow(settingsScroll, Priority.ALWAYS);
+
+        shell.getChildren().addAll(header, syncCard, settingsScroll);
+        return shell;
+    }
+
+    private VBox buildMobileSyncCard() {
+        VBox card = new VBox(10);
+        card.getStyleClass().addAll("settings-card", "mobile-sync-card");
+
+        Label eyebrow = new Label("SYNC");
+        eyebrow.getStyleClass().add("section-label");
+
+        Label title = new Label("Host or join together");
+        title.getStyleClass().add("settings-card-title");
+
+        Label help = new Label("These actions are moved into settings on mobile so the player stays uncluttered.");
+        help.getStyleClass().add("settings-card-copy");
+        help.setWrapText(true);
+
+        mobileSettingsHostButton = new Button();
+        mobileSettingsHostButton.getStyleClass().addAll("icon-button", "mobile-sync-button");
+        mobileSettingsHostButton.setOnAction(event -> handleHostSession());
+
+        mobileSettingsJoinButton = new Button();
+        mobileSettingsJoinButton.getStyleClass().addAll("icon-button", "mobile-sync-button");
+        mobileSettingsJoinButton.setOnAction(event -> handleJoinSession());
+
+        HBox actions = new HBox(10, mobileSettingsHostButton, mobileSettingsJoinButton);
+        HBox.setHgrow(mobileSettingsHostButton, Priority.ALWAYS);
+        HBox.setHgrow(mobileSettingsJoinButton, Priority.ALWAYS);
+        mobileSettingsHostButton.setMaxWidth(Double.MAX_VALUE);
+        mobileSettingsJoinButton.setMaxWidth(Double.MAX_VALUE);
+
+        mobileSettingsLinkField = new TextField();
+        mobileSettingsLinkField.setEditable(false);
+        mobileSettingsLinkField.setPromptText("Share link appears here when hosting");
+        mobileSettingsLinkField.getStyleClass().add("mobile-sync-link");
+
+        mobileSettingsPeerLabel = new Label("No peers connected yet");
+        mobileSettingsPeerLabel.getStyleClass().add("mobile-sync-meta");
+
+        mobileSettingsStatusLabel = new Label(statusLabel != null ? statusLabel.getText() : "Ready");
+        mobileSettingsStatusLabel.setWrapText(true);
+        mobileSettingsStatusLabel.getStyleClass().add("mobile-sync-status");
+
+        card.getChildren().addAll(eyebrow, title, help, actions, mobileSettingsLinkField, mobileSettingsPeerLabel, mobileSettingsStatusLabel);
+
+        updateSessionButtonLabels();
+        updateToggleButtonStyle(mobileSettingsHostButton, lanSync.getMode() == LanSyncManager.Mode.HOST);
+        updateToggleButtonStyle(mobileSettingsJoinButton, lanSync.getMode() == LanSyncManager.Mode.CLIENT);
+        updatePeerLabel(peerCountLabel != null && !peerCountLabel.getText().isBlank() ? extractPeerCount(peerCountLabel.getText()) : 0);
+
+        if (publicLinkField != null) {
+            updatePublicLinkFields(publicLinkField.getText(), publicLinkField.getPromptText(), publicLinkField.isVisible());
+        } else {
+            updatePublicLinkFields("", "Share link appears here when hosting", false);
+        }
+
+        return card;
+    }
+
+    private void updatePublicLinkFields(String text, String prompt, boolean visible) {
+        applyPublicLinkFieldState(publicLinkField, text, prompt, visible);
+        applyPublicLinkFieldState(mobileSettingsLinkField, text, prompt, visible);
+    }
+
+    private void applyPublicLinkFieldState(TextField field, String text, String prompt, boolean visible) {
+        if (field == null) {
+            return;
+        }
+        field.setText(text == null ? "" : text);
+        field.setPromptText(prompt == null ? "" : prompt);
+        field.setVisible(visible);
+        field.setManaged(visible);
+    }
+
+    private int extractPeerCount(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+        String digits = text.replaceAll("[^0-9]", "");
+        if (digits.isBlank()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(digits);
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
     }
 
     private void syncSettingsToUi() {
