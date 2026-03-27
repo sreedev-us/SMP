@@ -23,14 +23,15 @@
         <top>
             <HBox styleClass="header-bar mobile-header-bar" alignment="CENTER_LEFT" spacing="10">
                 <padding><Insets left="18" right="18" top="10" bottom="10" /></padding>
-                <Button fx:id="menuButton" text="Search" styleClass="mobile-header-button"
+                <Button fx:id="menuButton" text="Browse" styleClass="mobile-header-button"
                         onAction="#handleToggleSidebar" />
-                <Label text="HP" styleClass="header-logo" />
+                <Label text="HP" styleClass="header-logo mobile-wordmark" />
                 <VBox spacing="2">
                     <Label text="Harmony Pro" styleClass="header-title" />
-                    <Label fx:id="userInfoLabel" text="Not Logged In" styleClass="user-info-label mobile-user-badge" />
+                    <Label text="Mobile Listening Suite" styleClass="mobile-subtitle" />
                 </VBox>
                 <HBox HBox.hgrow="ALWAYS" />
+                <Label fx:id="userInfoLabel" text="Not Logged In" styleClass="user-info-label mobile-user-badge" />
                 <Button text="Tune" styleClass="mobile-header-button mobile-settings-trigger"
                         onAction="#handleOpenSettings" />
             </HBox>
@@ -42,10 +43,18 @@
                     <VBox spacing="18" styleClass="mobile-content">
                         <padding><Insets top="18" bottom="18" left="18" right="18" /></padding>
 
-                        <VBox styleClass="now-playing-card mobile-now-playing-card" alignment="CENTER" spacing="16">
+                        <VBox styleClass="mobile-hero-card" spacing="18">
+                            <HBox alignment="CENTER_LEFT" spacing="10" styleClass="mobile-hero-topline">
+                                <Label text="Now Playing" styleClass="mobile-eyebrow" />
+                                <Region HBox.hgrow="ALWAYS" />
+                                <Button text="Search" styleClass="mobile-ghost-button"
+                                        onAction="#handleToggleSidebar" />
+                            </HBox>
+
+                            <VBox styleClass="now-playing-card mobile-now-playing-card" alignment="CENTER" spacing="16">
                             <StackPane styleClass="mobile-art-shell">
                                 <ImageView fx:id="albumArtView"
-                                           fitHeight="208.0" fitWidth="208.0"
+                                           fitHeight="220.0" fitWidth="220.0"
                                            preserveRatio="true" styleClass="album-art" />
                                 <ProgressIndicator fx:id="loadingIndicator" prefWidth="48" prefHeight="48"
                                                    styleClass="loading-indicator" visible="false" />
@@ -54,6 +63,13 @@
                                    styleClass="song-title-label mobile-song-title" wrapText="true" maxWidth="420" />
                             <Label fx:id="artistLabel" text="Search for a song and click to play"
                                    styleClass="artist-label mobile-artist-label" />
+                            </VBox>
+
+                            <HBox alignment="CENTER" spacing="10" styleClass="mobile-feature-strip">
+                                <Label text="Smart Queue" styleClass="mobile-feature-pill" />
+                                <Label text="Live Lyrics" styleClass="mobile-feature-pill" />
+                                <Label text="YouTube Search" styleClass="mobile-feature-pill" />
+                            </HBox>
                         </VBox>
 
                         <VBox styleClass="lyrics-card mobile-lyrics-card" spacing="16">
@@ -107,11 +123,15 @@
                     <Button text="Vol +" styleClass="icon-button mobile-mini-button" onAction="#handleVolumeUp" />
                 </HBox>
 
+                <HBox alignment="CENTER_LEFT" spacing="8" styleClass="mobile-status-row">
+                    <Label text="Status" styleClass="mobile-status-tag" />
+                    <Label fx:id="statusLabel" text="Welcome to Harmony Pro!"
+                           styleClass="status-label mobile-status-label" wrapText="true" />
+                </HBox>
+
                 <TextField fx:id="publicLinkField" visible="false" managed="false" editable="false"
                            promptText="Generating link..." />
                 <Label fx:id="peerCountLabel" text="" styleClass="user-info-label" visible="false" managed="false" />
-                <Label fx:id="statusLabel" text="Welcome to Harmony Pro!"
-                       styleClass="status-label mobile-status-label" wrapText="true" />
             </VBox>
         </bottom>
     </BorderPane>
@@ -121,7 +141,10 @@
         <VBox fx:id="sidebar" styleClass="sidebar mobile-search-shell" spacing="14" maxWidth="520">
             <padding><Insets top="18" left="18" right="18" bottom="18" /></padding>
             <HBox alignment="CENTER_LEFT" spacing="10" styleClass="mobile-search-header">
-                <Label text="Search &amp; Queue" styleClass="settings-card-title" />
+                <VBox spacing="2">
+                    <Label text="Search &amp; Queue" styleClass="settings-card-title" />
+                    <Label text="Find a track, then add it or tap a result to play." styleClass="settings-card-copy" />
+                </VBox>
                 <HBox HBox.hgrow="ALWAYS" />
                 <Button text="Close" styleClass="mobile-header-button" onAction="#handleToggleSidebar" />
             </HBox>
