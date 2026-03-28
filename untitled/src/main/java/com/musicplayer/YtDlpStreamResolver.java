@@ -2,6 +2,7 @@ package com.musicplayer;
 
 import com.github.kiulian.downloader.Config;
 import com.github.kiulian.downloader.YoutubeDownloader;
+import com.github.kiulian.downloader.downloader.client.ClientType;
 import com.github.kiulian.downloader.downloader.request.RequestVideoInfo;
 import com.github.kiulian.downloader.downloader.response.Response;
 import com.github.kiulian.downloader.model.videos.VideoInfo;
@@ -11,7 +12,7 @@ import com.github.kiulian.downloader.model.videos.formats.Format;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
+
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -70,45 +71,52 @@ public class YtDlpStreamResolver {
     }
 
     public static String resolveStreamUrl(String videoId) throws Exception {
-        try {
-            System.out.println("Resolving direct stream URL for: " + videoId);
-            RequestVideoInfo request = new RequestVideoInfo(videoId);
-            System.out.println("Downloader: Fetching VideoInfo...");
-            Response<VideoInfo> response = downloader.getVideoInfo(request);
-            System.out.println("Downloader: Response received. Status: " + response.status());
-            
-            VideoInfo info = response.data();
-            if (info == null) {
-                String message = response.error() != null && response.error().getMessage() != null
-                    ? response.error().getMessage()
-                    : "Video metadata is unavailable";
-                throw createPlaybackException(videoId, message, null);
+        ClientType[] clients = {ClientType.ANDROID, ClientType.WEB};
+        Throwable lastError = null;
+
+        for (ClientType client : clients) {
+            try {
+                System.out.println("Resolving direct stream URL via [" + client + "] for: " + videoId);
+                RequestVideoInfo request = new RequestVideoInfo(videoId).clientType(client);
+                Response<VideoInfo> response = downloader.getVideoInfo(request);
+                
+                VideoInfo info = response.data();
+                if (info == null) {
+                    System.err.println("Client [" + client + "] returned no metadata.");
+                    continue;
+                }
+
+                List<AudioFormat> audioFormats = info.audioFormats();
+                if (audioFormats == null || audioFormats.isEmpty()) {
+                    System.err.println("Client [" + client + "] found no audio streams.");
+                    continue;
+                }
+
+                // Prefer m4a/mp4 for JavaFX compatibility
+                AudioFormat bestFormat = audioFormats.stream()
+                    .filter(f -> f.extension().toString().toLowerCase().contains("m4a")
+                        || f.extension().toString().toLowerCase().contains("mp4"))
+                    .max(Comparator.comparingInt(Format::bitrate))
+                    .orElse(audioFormats.get(0));
+
+                String formatUrl = bestFormat.url();
+                if (formatUrl == null || formatUrl.isBlank()) {
+                    System.err.println("Client [" + client + "] selected stream has no URL.");
+                    continue;
+                }
+
+                System.out.println("Direct stream resolved via [" + client + "]: " + formatUrl.substring(0, Math.min(formatUrl.length(), 100)) + "...");
+                return formatUrl;
+                
+            } catch (Throwable t) {
+                lastError = t;
+                System.err.println("Client [" + client + "] error: " + t.getMessage());
             }
-
-            List<AudioFormat> audioFormats = info.audioFormats();
-            if (audioFormats == null || audioFormats.isEmpty()) {
-                throw createPlaybackException(videoId, "No audio streams found", null);
-            }
-
-            // Prefer m4a/mp4 for JavaFX compatibility
-            AudioFormat bestFormat = audioFormats.stream()
-                .filter(f -> f.extension().toString().toLowerCase().contains("m4a")
-                    || f.extension().toString().toLowerCase().contains("mp4"))
-                .max(Comparator.comparingInt(Format::bitrate))
-                .orElse(audioFormats.get(0));
-
-            String formatUrl = bestFormat.url();
-            if (formatUrl == null || formatUrl.isBlank()) {
-                throw createPlaybackException(videoId, "Selected audio stream does not include a download URL", null);
-            }
-
-            System.out.println("Direct stream resolved: " + formatUrl.substring(0, Math.min(formatUrl.length(), 100)) + "...");
-            return formatUrl;
-        } catch (Throwable t) {
-            System.err.println("--- resolveStreamUrl INTERNAL THROWABLE ---");
-            t.printStackTrace();
-            throw (t instanceof Exception) ? (Exception)t : new Exception(t);
         }
+        
+        throw createPlaybackException(videoId, 
+                lastError != null ? lastError.getMessage() : "All streaming clients failed", 
+                lastError);
     }
 
     private static String resolveWithYtDlp(String videoId, File outputFile) throws Exception {
@@ -189,51 +197,51 @@ public class YtDlpStreamResolver {
 
     private static String resolveWithJavaDownloader(String videoId, File outputFile) throws Exception {
         System.out.println("Native Java download started for: " + videoId);
-        RequestVideoInfo request = new RequestVideoInfo(videoId);
-        Response<VideoInfo> response = downloader.getVideoInfo(request);
-        VideoInfo info = response.data();
-        if (info == null) {
-            String message = response.error() != null && response.error().getMessage() != null
-                ? response.error().getMessage()
-                : "Video metadata is unavailable";
-            throw createPlaybackException(videoId, message, null);
-        }
+        ClientType[] clients = {ClientType.ANDROID, ClientType.WEB};
+        Throwable lastError = null;
 
-        List<AudioFormat> audioFormats = info.audioFormats();
-        if (audioFormats == null || audioFormats.isEmpty()) {
-            throw createPlaybackException(videoId, "No audio streams found", null);
-        }
+        for (ClientType client : clients) {
+            try {
+                RequestVideoInfo request = new RequestVideoInfo(videoId).clientType(client);
+                Response<VideoInfo> response = downloader.getVideoInfo(request);
+                VideoInfo info = response.data();
+                if (info == null) continue;
 
-        AudioFormat bestFormat = audioFormats.stream()
-            .filter(f -> f.extension().toString().toLowerCase().contains("m4a")
-                || f.extension().toString().toLowerCase().contains("mp4"))
-            .max(Comparator.comparingInt(Format::bitrate))
-            .orElse(audioFormats.get(0));
+                List<AudioFormat> audioFormats = info.audioFormats();
+                if (audioFormats == null || audioFormats.isEmpty()) continue;
 
-        String formatUrl = bestFormat.url();
-        if (formatUrl == null || formatUrl.isBlank()) {
-            throw createPlaybackException(videoId, "Selected audio stream does not include a download URL", null);
-        }
+                AudioFormat bestFormat = audioFormats.stream()
+                    .filter(f -> f.extension().toString().toLowerCase().contains("m4a")
+                        || f.extension().toString().toLowerCase().contains("mp4"))
+                    .max(Comparator.comparingInt(Format::bitrate))
+                    .orElse(audioFormats.get(0));
 
-        URL url = new URL(formatUrl);
-        try (InputStream in = url.openStream();
-             OutputStream out = new FileOutputStream(outputFile)) {
-            byte[] buffer = new byte[64 * 1024];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
+                String formatUrl = bestFormat.url();
+                if (formatUrl == null || formatUrl.isBlank()) continue;
+
+                URL url = new URL(formatUrl);
+                try (InputStream in = url.openStream();
+                     OutputStream out = new FileOutputStream(outputFile)) {
+                    byte[] buffer = new byte[64 * 1024];
+                    int read;
+                    while ((read = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, read);
+                    }
+                }
+
+                if (outputFile.exists() && outputFile.length() > 10_000) {
+                    System.out.println("Native download complete via [" + client + "]: " + outputFile.getName());
+                    return outputFile.getAbsolutePath();
+                }
+            } catch (Throwable t) {
+                lastError = t;
+                System.err.println("Native client [" + client + "] error: " + t.getMessage());
             }
-        } catch (IOException ioException) {
-            throw createPlaybackException(videoId, ioException.getMessage(), ioException);
         }
 
-        if (outputFile.exists() && outputFile.length() > 10_000) {
-            System.out.println("Native download complete: " + outputFile.getName()
-                + " (" + outputFile.length() / 1024 + " KB)");
-            return outputFile.getAbsolutePath();
-        }
-
-        throw new RuntimeException("Native download failed to produce a valid file for " + videoId);
+        throw createPlaybackException(videoId,
+                lastError != null ? lastError.getMessage() : "All download clients failed",
+                lastError);
     }
 
     private static Exception createPlaybackException(String videoId, String message, Throwable cause) {
