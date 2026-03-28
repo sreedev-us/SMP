@@ -28,7 +28,7 @@ public final class AppPlatform {
     }
 
     public static boolean isMobile() {
-        return true;
+        return isAndroid() || OS_NAME.contains("ios") || GLUON_PLATFORM.contains("ios");
     }
 
     public static void configurePrimaryStage(Stage stage) {

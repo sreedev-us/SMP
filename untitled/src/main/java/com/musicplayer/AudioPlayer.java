@@ -61,7 +61,7 @@ public class AudioPlayer {
         }
         
         mediaPlayer.setOnReady(() -> {
-            System.out.println("AudioPlayer: Media READY");
+            System.out.println("AudioPlayer: Media READY. Status: " + mediaPlayer.getStatus());
             mediaPlayer.play();
             if (onReady != null) {
                 onReady.run();

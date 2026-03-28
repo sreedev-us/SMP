@@ -482,19 +482,38 @@ public class FxMusicPlayer {
             return;
         }
 
-        updateStatus("Loading audio: " + song.getTitle() + " (may take a few seconds...)");
+        updateStatus("Resolving audio: " + song.getTitle() + "...");
         setLoading(true);
 
         new Thread(() -> {
+            boolean[] completed = {false};
+            // 20-second Watchdog
+            new Thread(() -> {
+                try { Thread.sleep(20000); } catch (Exception ignored) {}
+                if (!completed[0]) {
+                    Platform.runLater(() -> {
+                        setLoading(false);
+                        updateStatus("Error: Resolution timed out for " + song.getTitle());
+                    });
+                }
+            }, "resolver-watchdog").start();
+
             try {
+                Platform.runLater(() -> updateStatus("Resolving stream..."));
                 String streamUrl = resolveOnlineStream(song);
+                
+                System.out.println("DEBUG: Resolved stream URL: " + (streamUrl != null ? streamUrl.substring(0, Math.min(streamUrl.length(), 50)) : "null"));
 
                 Platform.runLater(() -> {
+                    completed[0] = true;
                     setLoading(false);
                     try {
+                        updateStatus("Player initializing...");
                         audioPlayer.play(streamUrl);
                         onPlaybackStarted();
-                        // Notify LAN clients (host mode only  no-op if idle)
+                        updateStatus("Buffering...");
+                        
+                        // Notify LAN clients
                         lanSync.notifyPlay(song.getVideoId(), streamUrl, 0);
                     } catch (Exception e) {
                         updateStatus("Playback error: " + e.getMessage());
@@ -503,6 +522,7 @@ public class FxMusicPlayer {
                 });
 
             } catch (Exception e) {
+                completed[0] = true;
                 Platform.runLater(() -> {
                     setLoading(false);
                     if (shouldUseOfficialYouTubePlayback()) {
