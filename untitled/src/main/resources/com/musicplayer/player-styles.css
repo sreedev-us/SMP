@@ -12,10 +12,10 @@
 }
 
 .main-container {
-    -fx-background-color:
-        radial-gradient(center 18% 8%, radius 70%, rgba(29, 185, 84, 0.18), transparent),
-        radial-gradient(center 85% 12%, radius 58%, rgba(80, 227, 194, 0.10), transparent),
-        linear-gradient(to bottom, #050807, #0a1110 30%, #101918 62%, #141d1c 100%);
+    -fx-background-color: #121212; /* Solid dark for mobile compatibility */
+    -fx-background-image: 
+        radial-gradient(center 18% 8%, radius 70%, rgba(29, 185, 84, 0.15), transparent),
+        radial-gradient(center 85% 12%, radius 58%, rgba(80, 227, 194, 0.08), transparent);
     -fx-font-family: "Segoe UI";
 }
 
@@ -398,10 +398,15 @@
 }
 
 .mobile-content-scroll {
+    -fx-background-color: transparent;
     -fx-padding: 0;
+}
+.mobile-content-scroll .viewport {
+    -fx-background-color: transparent;
 }
 
 .mobile-content {
+    -fx-background-color: transparent;
     -fx-padding: 4 0 0 0;
 }
 
@@ -1300,19 +1305,7 @@
 .playlist-title { -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; }
 .playlist-subtitle { -fx-text-fill: #B3B3B3; -fx-font-size: 12px; }
 
-/* Theme Picker Floating Bar */
-.theme-picker-floating-bar {
-    -fx-background-color: rgba(30, 30, 30, 0.95);
-    -fx-background-radius: 30;
-    -fx-padding: 10 20;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 20, 0, 0, 4);
-    -fx-cursor: hand;
-}
-.theme-circle {
-    -fx-stroke: rgba(255,255,255,0.2);
-    -fx-stroke-width: 2;
-}
-.theme-circle:hover { -fx-scale-x: 1.1; -fx-scale-y: 1.1; }
+/* End of theme picker styles */
 
 /* Bottom Dock Container: Mini Player + Bottom Nav */
 .bottom-dock-container {

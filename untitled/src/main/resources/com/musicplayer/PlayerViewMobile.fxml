@@ -169,15 +169,7 @@
         </bottom>
     </BorderPane>
 
-    <!-- Floating Theme Picker -->
-    <HBox alignment="CENTER" spacing="16" styleClass="theme-picker-floating-bar" StackPane.alignment="BOTTOM_CENTER" maxHeight="60">
-        <StackPane.margin><Insets bottom="85" /></StackPane.margin>
-        <Circle fill="#FF4B4B" radius="20" styleClass="theme-circle" onMouseClicked="#handleThemeRed" />
-        <Circle fill="#FFC107" radius="20" styleClass="theme-circle" onMouseClicked="#handleThemeYellow" />
-        <Circle fill="#00E676" radius="20" styleClass="theme-circle" onMouseClicked="#handleThemeGreen" />
-        <Circle fill="#00B0FF" radius="20" styleClass="theme-circle" onMouseClicked="#handleThemeBlue" />
-        <Circle fill="#FFFFFF" radius="20" styleClass="theme-circle" onMouseClicked="#handleThemeWhite" />
-    </HBox>
+
 
     <!-- Search Overlay -->
     <StackPane fx:id="mobileSearchOverlay" styleClass="mobile-search-overlay" visible="false" managed="false">
