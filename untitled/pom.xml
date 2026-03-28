@@ -111,6 +111,11 @@
         </dependency>
         <dependency>
             <groupId>com.gluonhq.attach</groupId>
+            <artifactId>browser</artifactId>
+            <version>4.0.19</version>
+        </dependency>
+        <dependency>
+            <groupId>com.gluonhq.attach</groupId>
             <artifactId>display</artifactId>
             <version>4.0.19</version>
         </dependency>
@@ -204,6 +209,7 @@
                             <target>${gluonfx.target}</target>
                             <graalvmHome>${env.GRAALVM_HOME}</graalvmHome>
                             <attachList>
+                                <list>browser</list>
                                 <list>display</list>
                                 <list>storage</list>
                             </attachList>

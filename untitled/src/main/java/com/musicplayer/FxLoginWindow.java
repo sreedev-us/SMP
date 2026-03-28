@@ -10,6 +10,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.stage.Stage;
 
+import com.gluonhq.attach.browser.BrowserService;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -134,8 +136,29 @@ public class FxLoginWindow extends Application {
             playerController.setExternalUrlOpener(url -> {
                 System.out.println("ExternalOpener: Attempting to open " + url);
                 try {
-                    getHostServices().showDocument(url);
-                    System.out.println("ExternalOpener: showDocument call completed");
+                    if (AppPlatform.isAndroid()) {
+                        // On Android, getHostServices().showDocument() is a no-op.
+                        // Use Gluon BrowserService which fires a real Android Intent.
+                        BrowserService.create().ifPresentOrElse(
+                            browser -> {
+                                try {
+                                    browser.launchExternalBrowser(url);
+                                    System.out.println("ExternalOpener: Android BrowserService launched.");
+                                } catch (Exception ex) {
+                                    System.err.println("ExternalOpener BrowserService error: " + ex.getMessage());
+                                    ex.printStackTrace();
+                                    Platform.runLater(() -> playerController.updateStatus("Error: Browser launch failed - " + ex.getClass().getSimpleName()));
+                                }
+                            },
+                            () -> {
+                                System.err.println("ExternalOpener: BrowserService not available on this device.");
+                                Platform.runLater(() -> playerController.updateStatus("Error: Browser service unavailable."));
+                            }
+                        );
+                    } else {
+                        getHostServices().showDocument(url);
+                        System.out.println("ExternalOpener: Desktop showDocument call completed");
+                    }
                 } catch (Exception ex) {
                     System.err.println("ExternalOpener error: " + ex.getMessage());
                     ex.printStackTrace();
