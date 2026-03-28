@@ -521,15 +521,16 @@ public class FxMusicPlayer {
                     }
                 });
 
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 completed[0] = true;
                 Platform.runLater(() -> {
                     setLoading(false);
+                    updateStatus("Error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
                     if (shouldUseOfficialYouTubePlayback()) {
                         openSongInYouTube(song);
                         return;
                     }
-                    handlePlaybackFailure(song, e);
+                    handlePlaybackFailure(song, new Exception(e));
                 });
             }
         }, "ytdlp-resolver").start();
