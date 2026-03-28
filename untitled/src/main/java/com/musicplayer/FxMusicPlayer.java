@@ -552,7 +552,10 @@ public class FxMusicPlayer {
                     setLoading(false);
                     updateStatus("Error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
                     if (shouldUseOfficialYouTubePlayback()) {
-                        openSongInYouTube(song);
+                        new Thread(() -> {
+                            try { Thread.sleep(5000); } catch (Exception ignored) {}
+                            Platform.runLater(() -> openSongInYouTube(song));
+                        }).start();
                         return;
                     }
                     handlePlaybackFailure(song, new Exception(e));
