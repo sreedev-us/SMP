@@ -19,6 +19,7 @@ public class AudioPlayer {
     private double volume = 0.70; // 0.0 – 1.0
     private Runnable onEndOfMedia;
     private Runnable onReady;
+    private java.util.function.Consumer<String> onError;
 
     // ── Playback ──────────────────────────────────────────────────────────────
 
@@ -49,17 +50,24 @@ public class AudioPlayer {
                 System.err.println("Error Type: " + mediaPlayer.getError().getType());
             }
             System.err.println("Media URI: " + mediaUri);
+            if (onError != null) {
+                onError.accept(errorMsg);
+            }
         });
 
         // Wire end-of-media callback (auto-advance)
         if (onEndOfMedia != null) {
             mediaPlayer.setOnEndOfMedia(onEndOfMedia);
         }
-        if (onReady != null) {
-            mediaPlayer.setOnReady(onReady);
-        }
+        
+        mediaPlayer.setOnReady(() -> {
+            System.out.println("AudioPlayer: Media READY");
+            mediaPlayer.play();
+            if (onReady != null) {
+                onReady.run();
+            }
+        });
 
-        mediaPlayer.play();
         isPlaying = true;
         isPaused  = false;
     }
@@ -146,8 +154,9 @@ public class AudioPlayer {
 
     public void setOnReady(Runnable callback) {
         this.onReady = callback;
-        if (mediaPlayer != null) {
-            mediaPlayer.setOnReady(callback);
-        }
+    }
+
+    public void setOnError(java.util.function.Consumer<String> callback) {
+        this.onError = callback;
     }
 }

@@ -125,6 +125,13 @@ public class FxMusicPlayer {
         this.settings = settings;
         this.cache = new CacheManager();
         this.audioPlayer = new AudioPlayer();
+        this.audioPlayer.setOnError(err -> Platform.runLater(() -> {
+            updateStatus("Playback Error: " + err);
+            // Also show a temporary alert on mobile to be sure user sees it
+            if (AppPlatform.isMobile()) {
+                statusLabel.setText("ERROR: " + err);
+            }
+        }));
 
         // Auto-advance when a track ends
         this.audioPlayer.setOnEndOfMedia(() -> Platform.runLater(this::handleNext));
