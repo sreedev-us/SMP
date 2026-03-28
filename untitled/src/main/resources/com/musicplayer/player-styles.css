@@ -669,7 +669,9 @@
     -fx-text-fill: #ff4444 !important;
     -fx-font-weight: bold !important;
     -fx-font-size: 15px !important;
-    -fx-background-color: rgba(0, 0, 0, 0.6) !important;
+    -fx-background-color: rgba(0, 0, 0, 0.8) !important;
+    -fx-padding: 10px !important;
+    -fx-background-radius: 5px !important;
 }
 
 .mobile-status-row {

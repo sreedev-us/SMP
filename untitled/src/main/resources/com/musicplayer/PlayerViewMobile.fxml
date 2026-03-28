@@ -463,13 +463,16 @@
             </VBox>
             
             <Label fx:id="userInfoLabel" visible="false" managed="false" />
-            <Label fx:id="statusLabel" visible="false" managed="false" />
             <Button fx:id="menuButton" visible="false" managed="false" />
             
             <Region VBox.vgrow="ALWAYS" />
         </VBox>
     </StackPane>
 
+    <Label fx:id="statusLabel" visible="true" managed="true" 
+           StackPane.alignment="TOP_CENTER" styleClass="status-label-diagnostic" text="App Ready - Select Song">
+        <StackPane.margin><Insets top="40"/></StackPane.margin>
+    </Label>
 </StackPane>
 
 
