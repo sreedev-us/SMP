@@ -316,31 +316,5 @@
     "allDeclaredConstructors": true,
     "allDeclaredFields": true,
     "allDeclaredMethods": true
-  },
-  {
-    "name": "android.net.Uri",
-    "allPublicMethods": true,
-    "allDeclaredMethods": true,
-    "allPublicFields": true,
-    "allDeclaredFields": true
-  },
-  {
-    "name": "android.content.Intent",
-    "allPublicConstructors": true,
-    "allDeclaredConstructors": true,
-    "allPublicMethods": true,
-    "allDeclaredMethods": true,
-    "allPublicFields": true,
-    "allDeclaredFields": true
-  },
-  {
-    "name": "android.app.ActivityThread",
-    "allPublicMethods": true,
-    "allDeclaredMethods": true
-  },
-  {
-    "name": "android.app.Application",
-    "allPublicMethods": true,
-    "allDeclaredMethods": true
   }
 ]
