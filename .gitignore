@@ -5,3 +5,4 @@ temp/
 
 # Credentials
 credentials.json
+!untitled/src/main/resources/com/musicplayer/credentials.json

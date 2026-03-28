@@ -66,6 +66,7 @@ public class FxMusicPlayer {
     @FXML private Button repeatButton;
     @FXML private Button autoRadioButton;
     @FXML private ProgressIndicator loadingIndicator;
+    @FXML private FlowPane searchCategoriesBox;
     @FXML private Button hostButton;
     @FXML private Button joinButton;
     @FXML private TextField publicLinkField;
@@ -87,7 +88,10 @@ public class FxMusicPlayer {
     @FXML private Label expandedCurrentTimeLabel;
     @FXML private Label expandedTotalTimeLabel;
     @FXML private ProgressBar expandedProgressBar;
+    @FXML private ProgressBar miniProgressLine;
     @FXML private Slider expandedProgressSlider;
+    @FXML private Label mTimeC;
+    @FXML private Label mTimeT;
     @FXML private Button expandedPlayPauseButton;
     @FXML private Label expandedLyricsBadgeLabel;
     private Button mobileSettingsHostButton;
@@ -211,6 +215,16 @@ public class FxMusicPlayer {
         setupProgressTimer();
         setupProgressSlider();
 
+        audioPlayer.setOnReady(() -> {
+            Platform.runLater(() -> {
+                SongData current = playlist.get(currentSongIndex);
+                if (current != null) {
+                    System.out.println("Metadata ready for: " + current.getTitle() + ", Duration: " + audioPlayer.getDuration());
+                    loadLyricsForSong(current);
+                }
+            });
+        });
+
         // User info
         if (auth != null && auth.isLoggedIn()) {
             if (auth.isRealLogin()) {
@@ -317,7 +331,7 @@ public class FxMusicPlayer {
         }
     }
 
-    // ── UI Helpers ─────────────────────────────────────────────────────────────
+    //  UI Helpers 
 
     private void configureListView(ListView<SongData> listView) {
         listView.setCellFactory(lv -> new ListCell<>() {
@@ -337,24 +351,26 @@ public class FxMusicPlayer {
     }
 
     private void setAlbumArt(String thumbnailUrl) {
+        Image image = (thumbnailUrl != null && !thumbnailUrl.isEmpty()) ? new Image(thumbnailUrl, true) : null;
         try {
-            if (thumbnailUrl != null && !thumbnailUrl.isEmpty()) {
-                Image image = new Image(thumbnailUrl, true);
-                albumArtView.setImage(image);
-                if (expandedAlbumArtView != null) {
-                    expandedAlbumArtView.setImage(image);
+            if (albumArtView != null) {
+                if (image != null) {
+                    albumArtView.setImage(image);
+                    if (expandedAlbumArtView != null) {
+                        expandedAlbumArtView.setImage(image);
+                    }
+                } else {
+                    albumArtView.setImage(defaultAlbumArt);
+                    if (expandedAlbumArtView != null) {
+                        expandedAlbumArtView.setImage(defaultAlbumArt);
+                    }
                 }
-            } else {
-                albumArtView.setImage(defaultAlbumArt);
-                if (expandedAlbumArtView != null) {
-                    expandedAlbumArtView.setImage(defaultAlbumArt);
-                }
+            } else if (expandedAlbumArtView != null) {
+                expandedAlbumArtView.setImage(image != null ? image : defaultAlbumArt);
             }
         } catch (Exception e) {
-            albumArtView.setImage(defaultAlbumArt);
-            if (expandedAlbumArtView != null) {
-                expandedAlbumArtView.setImage(defaultAlbumArt);
-            }
+            if (albumArtView != null) albumArtView.setImage(defaultAlbumArt);
+            if (expandedAlbumArtView != null) expandedAlbumArtView.setImage(defaultAlbumArt);
         }
     }
 
@@ -384,27 +400,22 @@ public class FxMusicPlayer {
     }
 
     private void updateSessionButtonLabels() {
-        if (hostButton != null) {
-            hostButton.setText(lanSync.getMode() == LanSyncManager.Mode.HOST ? "Stop Sync" : "Start Sync");
-        }
-        if (joinButton != null) {
-            joinButton.setText(lanSync.getMode() == LanSyncManager.Mode.CLIENT ? "Leave" : "Connect");
-        }
-        if (mobileSettingsHostButton != null) {
-            mobileSettingsHostButton.setText(lanSync.getMode() == LanSyncManager.Mode.HOST ? "Stop Sync" : "Host Session");
-        }
-        if (mobileSettingsJoinButton != null) {
-            mobileSettingsJoinButton.setText(lanSync.getMode() == LanSyncManager.Mode.CLIENT ? "Leave Session" : "Join Session");
+        if (lanSync != null) {
+            if (hostButton != null) hostButton.setText(lanSync.getMode() == LanSyncManager.Mode.HOST ? "Stop Sync" : "Start Sync");
+            if (joinButton != null) joinButton.setText(lanSync.getMode() == LanSyncManager.Mode.CLIENT ? "Leave" : "Connect");
+            if (mobileSettingsHostButton != null) mobileSettingsHostButton.setText(lanSync.getMode() == LanSyncManager.Mode.HOST ? "Stop Sync" : "Host Session");
+            if (mobileSettingsJoinButton != null) mobileSettingsJoinButton.setText(lanSync.getMode() == LanSyncManager.Mode.CLIENT ? "Leave Session" : "Join Session");
         }
     }
 
     private void setLoading(boolean loading) {
         if (loadingIndicator != null) {
             loadingIndicator.setVisible(loading);
+            loadingIndicator.setManaged(loading);
         }
     }
 
-    // ── Player Controls ────────────────────────────────────────────────────────
+    //  Player Controls 
 
     @FXML
     public void handlePlayPause() {
@@ -476,7 +487,7 @@ public class FxMusicPlayer {
                     try {
                         audioPlayer.play(streamUrl);
                         onPlaybackStarted();
-                        // Notify LAN clients (host mode only — no-op if idle)
+                        // Notify LAN clients (host mode only  no-op if idle)
                         lanSync.notifyPlay(song.getVideoId(), streamUrl, 0);
                     } catch (Exception e) {
                         updateStatus("Playback error: " + e.getMessage());
@@ -535,8 +546,8 @@ public class FxMusicPlayer {
         if (progressBar != null) {
             progressBar.setProgress(0);
         }
-        currentTimeLabel.setText("0:00");
-        totalTimeLabel.setText("0:00");
+        if (currentTimeLabel != null) currentTimeLabel.setText("0:00");
+        if (totalTimeLabel != null) totalTimeLabel.setText("0:00");
         if (expandedProgressBar != null) {
             expandedProgressBar.setProgress(0);
         }
@@ -594,7 +605,7 @@ public class FxMusicPlayer {
         playMusic();
     }
 
-    // ── Auto Radio ─────────────────────────────────────────────────────────────
+    //  Auto Radio 
 
     @FXML
     public void handleToggleAutoRadio() {
@@ -645,8 +656,12 @@ public class FxMusicPlayer {
             return;
         }
 
-        updateStatus("Stream error: " + error.getMessage());
-        new Timeline(new KeyFrame(Duration.seconds(3), ev -> handleNext())).play();
+        String msg = "Stream error: " + error.getMessage();
+        if (error.getMessage() != null && error.getMessage().contains("decoding")) {
+            msg = "Playback error: Media codec issue. Try another track.";
+        }
+        updateStatus(msg);
+        new Timeline(new KeyFrame(Duration.seconds(4), ev -> handleNext())).play();
     }
 
     private String resolveOnlineStream(SongData song) throws Exception {
@@ -794,7 +809,7 @@ public class FxMusicPlayer {
                 updateStatus(repeatEnabled ? "Repeat ON" : "Repeat OFF");
     }
 
-    // ── Volume & Progress ──────────────────────────────────────────────────────
+    //  Volume & Progress 
 
     private void setVolume(double value) {
         audioPlayer.setVolume((int) value);
@@ -830,8 +845,8 @@ public class FxMusicPlayer {
                 
                 long total   = audioPlayer.getDuration();
                 if (total > 0) {
-                    currentTimeLabel.setText(formatTime(current));
-                    totalTimeLabel.setText(formatTime(total));
+                    if (currentTimeLabel != null) currentTimeLabel.setText(formatTime(current));
+                    if (totalTimeLabel != null) totalTimeLabel.setText(formatTime(total));
                     double progress = (double) current / total;
                     if (progressSlider != null) {
                         progressSlider.setValue(progress * 100.0);
@@ -851,6 +866,15 @@ public class FxMusicPlayer {
                     if (expandedTotalTimeLabel != null) {
                         expandedTotalTimeLabel.setText(formatTime(total));
                     }
+                    if (miniProgressLine != null) {
+                        miniProgressLine.setProgress(progress);
+                    }
+                    if (mTimeC != null) {
+                        mTimeC.setText(formatTime(current));
+                    }
+                    if (mTimeT != null) {
+                        mTimeT.setText(formatTime(total));
+                    }
                 }
                 syncLyricsToPosition(current);
             }
@@ -859,16 +883,24 @@ public class FxMusicPlayer {
     }
 
     private void setupProgressSlider() {
-        if (progressSlider == null) {
-            return;
+        if (progressSlider != null) {
+            setupSliderListeners(progressSlider);
         }
-        progressSlider.setOnMousePressed(e  -> isDraggingSlider = true);
-        progressSlider.setOnMouseReleased(e -> {
+        if (expandedProgressSlider != null) {
+            setupSliderListeners(expandedProgressSlider);
+        }
+    }
+
+    private void setupSliderListeners(Slider slider) {
+        slider.setOnMousePressed(e  -> isDraggingSlider = true);
+        slider.setOnMouseReleased(e -> {
             long total = audioPlayer.getDuration();
             if (total > 0 && (isPlaying || isPaused)) {
-                long newPosMs = (long) (progressSlider.getValue() / 100.0 * total);
+                long newPosMs = (long) (slider.getValue() / 100.0 * total);
                 audioPlayer.seek(newPosMs);
-                currentTimeLabel.setText(formatTime(newPosMs));
+                if (currentTimeLabel != null) currentTimeLabel.setText(formatTime(newPosMs));
+                if (expandedCurrentTimeLabel != null) expandedCurrentTimeLabel.setText(formatTime(newPosMs));
+                if (mTimeC != null) mTimeC.setText(formatTime(newPosMs));
                 syncLyricsToPosition(newPosMs);
                 lanSync.notifySeek(newPosMs);
             }
@@ -876,7 +908,7 @@ public class FxMusicPlayer {
         });
     }
 
-    // ── LAN Sync UI Handlers ────────────────────────────────────────────────
+    //  LAN Sync UI Handlers 
 
     @FXML
     public void handleHostSession() {
@@ -983,7 +1015,7 @@ public class FxMusicPlayer {
         }
     }
 
-    // ── Playlist & Search ──────────────────────────────────────────────────────
+    //  Playlist & Search 
 
     @FXML
     public void handleSearch() {
@@ -1017,8 +1049,24 @@ public class FxMusicPlayer {
                 }
                 Platform.runLater(() -> {
                     setLoading(false);
-                    searchResultsList.setItems(FXCollections.observableArrayList(results));
-                    updateStatus("Found " + results.size() + " results.");
+                    if (results.isEmpty()) {
+                        updateStatus("No results found.");
+                        if (searchCategoriesBox != null) {
+                            searchCategoriesBox.setVisible(true);
+                            searchCategoriesBox.setManaged(true);
+                        }
+                        searchResultsList.setVisible(false);
+                        searchResultsList.setManaged(false);
+                    } else {
+                        searchResultsList.setItems(FXCollections.observableArrayList(results));
+                        searchResultsList.setVisible(true);
+                        searchResultsList.setManaged(true);
+                        if (searchCategoriesBox != null) {
+                            searchCategoriesBox.setVisible(false);
+                            searchCategoriesBox.setManaged(false);
+                        }
+                        updateStatus("Found " + results.size() + " results.");
+                    }
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
@@ -1120,7 +1168,7 @@ public class FxMusicPlayer {
         event.consume();
     }
 
-    // ── Utility ────────────────────────────────────────────────────────────────
+    //  Utility 
 
     private void updateStatus(String msg) {
         if (statusLabel != null) statusLabel.setText(msg);
@@ -1269,7 +1317,9 @@ public class FxMusicPlayer {
     }
 
     private boolean shouldUseOfficialYouTubePlayback() {
-        return AppPlatform.isMobile()
+        // Only force official YouTube (external browser/app) if we are ACTUALLY on Android
+        // and using Guest Mode. On Desktop (even in mobile UI mode), we prefer yt-dlp.
+        return AppPlatform.isAndroid()
             && auth != null
             && auth.isLoggedIn()
             && !auth.isRealLogin();
@@ -1437,31 +1487,24 @@ public class FxMusicPlayer {
 
     private void updateNowPlaying(SongData song) {
         if (song == null) {
-            songTitleLabel.setText("No song selected");
-            artistLabel.setText("Select a song from the playlist");
-            if (expandedSongTitleLabel != null) {
-                expandedSongTitleLabel.setText("No song selected");
-            }
-            if (expandedArtistLabel != null) {
-                expandedArtistLabel.setText("Select a song from the playlist");
-            }
+            if (songTitleLabel != null) songTitleLabel.setText("No song selected");
+            if (artistLabel != null) artistLabel.setText("Select a song from the playlist");
+            if (expandedSongTitleLabel != null) expandedSongTitleLabel.setText("No song selected");
+            if (expandedArtistLabel != null) expandedArtistLabel.setText("Select a song from the playlist");
             setAlbumArt(null);
             playlistView.getSelectionModel().clearSelection();
             lanSync.clearWebTrackInfo();
             clearLyrics("Pick a song to light up the lyrics panel.", "Waiting for track");
         } else {
-            songTitleLabel.setText(song.getTitle());
-            artistLabel.setText(song.getChannel() != null ? song.getChannel() : "Unknown Artist");
-            if (expandedSongTitleLabel != null) {
-                expandedSongTitleLabel.setText(song.getTitle());
-            }
-            if (expandedArtistLabel != null) {
-                expandedArtistLabel.setText(song.getChannel() != null ? song.getChannel() : "Unknown Artist");
-            }
+            if (songTitleLabel != null) songTitleLabel.setText(song.getTitle());
+            if (artistLabel != null) artistLabel.setText(song.getChannel() != null ? song.getChannel() : "Unknown Artist");
+            if (expandedSongTitleLabel != null) expandedSongTitleLabel.setText(song.getTitle());
+            if (expandedArtistLabel != null) expandedArtistLabel.setText(song.getChannel() != null ? song.getChannel() : "Unknown Artist");
             playlistView.getSelectionModel().select(song);
             setAlbumArt(song.getThumbnailUrl());
             lanSync.updateWebTrackInfo(song.getTitle(), artistLabel.getText());
             renderLyricsPlaceholder("Fetching lyrics for " + song.getTitle(), "Searching lyrics");
+            loadLyricsForSong(song);
         }
     }
 
@@ -1491,7 +1534,7 @@ public class FxMusicPlayer {
         currentLyricsSynced = lyricsData != null && lyricsData.isSynced();
         currentLyricIndex = -1;
         lyricLineLabels.clear();
-        lyricsContainer.getChildren().clear();
+        if (lyricsContainer != null) lyricsContainer.getChildren().clear();
 
         if (lyricsData == null || lyricsData.isEmpty()) {
             lanSync.updateWebLyrics(null);
@@ -1513,7 +1556,9 @@ public class FxMusicPlayer {
             lyricLine.setMaxWidth(Double.MAX_VALUE);
             lyricLine.getStyleClass().add("lyrics-line");
             lyricLineLabels.add(lyricLine);
-            lyricsContainer.getChildren().add(lyricLine);
+            if (lyricsContainer != null) {
+                lyricsContainer.getChildren().add(lyricLine);
+            }
         }
 
         if (currentLyricsSynced) {
@@ -1533,12 +1578,9 @@ public class FxMusicPlayer {
         currentLyricIndex = -1;
         lyricLineLabels.clear();
 
-        if (lyricsContainer == null) {
-            return;
-        }
-
-        lyricsHeadlineLabel.setText(headline);
-        lyricsSourceLabel.setText(sourceText);
+        if (lyricsHeadlineLabel != null) lyricsHeadlineLabel.setText(headline);
+        if (lyricsSourceLabel != null) lyricsSourceLabel.setText(sourceText);
+        
         if (expandedLyricsBadgeLabel != null) {
             expandedLyricsBadgeLabel.setText(sourceText);
         }
@@ -1636,7 +1678,7 @@ public class FxMusicPlayer {
         System.out.println("FxMusicPlayer shut down.");
     }
 
-    // ── Mobile Bottom Nav ──────────────────────────────────────────────────────
+    //  Mobile Bottom Nav 
 
     @FXML
     public void handleNavHome() {
@@ -1660,7 +1702,7 @@ public class FxMusicPlayer {
         // Future: premium upsell overlay
     }
 
-    // ── Theme Picker ───────────────────────────────────────────────────────────
+    //  Theme Picker 
 
     private void applyTheme(String cssClass) {
         if (appRoot == null) return;
@@ -1674,3 +1716,4 @@ public class FxMusicPlayer {
     @FXML public void handleThemeBlue()   { applyTheme("theme-blue"); }
     @FXML public void handleThemeWhite()  { applyTheme("theme-white"); }
 }
+

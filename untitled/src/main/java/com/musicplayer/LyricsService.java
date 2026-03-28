@@ -334,8 +334,9 @@ public class LyricsService {
 
         return title
             .replaceFirst("\\.[A-Za-z0-9]{2,4}$", "")
-            .replaceAll("(?i)\\b(official video|official audio|lyrics|lyric video|music video|hd|4k|audio)\\b", "")
+            .replaceAll("(?i)\\b(official video|official audio|lyrics|lyric video|music video|hd|4k|audio|visualizer|full song|video)\\b", "")
             .replaceAll("\\(.*?\\)|\\[.*?\\]", "")
+            .replaceAll("[|-]", " ")
             .replaceAll("\\s+", " ")
             .trim();
     }
@@ -345,7 +346,7 @@ public class LyricsService {
             return "";
         }
         return artist
-            .replaceAll("(?i)\\b(vevo|topic|official|records|music|channel)\\b", "")
+            .replaceAll("(?i)\\b(vevo|topic|official|records|music|channel|entertainment|productions)\\b", "")
             .replaceAll("(?i)\\s+-\\s+topic$", "")
             .replaceAll("(?i)\\b(ft\\.?|feat\\.?|featuring)\\b.*$", "")
             .replaceAll("[|]", " ")

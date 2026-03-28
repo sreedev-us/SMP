@@ -18,6 +18,7 @@ public class AudioPlayer {
     private boolean isPaused = false;
     private double volume = 0.70; // 0.0 – 1.0
     private Runnable onEndOfMedia;
+    private Runnable onReady;
 
     // ── Playback ──────────────────────────────────────────────────────────────
 
@@ -35,13 +36,22 @@ public class AudioPlayer {
             mediaUri = new File(pathOrUrl).toURI().toString();
         }
 
+        System.out.println("AudioPlayer: Loading media from URI: " + mediaUri);
         Media media = new Media(mediaUri);
         mediaPlayer = new MediaPlayer(media);
         mediaPlayer.setVolume(volume);
 
+        mediaPlayer.setOnError(() -> {
+            String errorMsg = mediaPlayer.getError() != null ? mediaPlayer.getError().getMessage() : "Unknown MediaPlayer Error";
+            System.err.println("MediaPlayer error: " + errorMsg);
+        });
+
         // Wire end-of-media callback (auto-advance)
         if (onEndOfMedia != null) {
             mediaPlayer.setOnEndOfMedia(onEndOfMedia);
+        }
+        if (onReady != null) {
+            mediaPlayer.setOnReady(onReady);
         }
 
         mediaPlayer.play();
@@ -126,6 +136,13 @@ public class AudioPlayer {
         this.onEndOfMedia = callback;
         if (mediaPlayer != null) {
             mediaPlayer.setOnEndOfMedia(callback);
+        }
+    }
+
+    public void setOnReady(Runnable callback) {
+        this.onReady = callback;
+        if (mediaPlayer != null) {
+            mediaPlayer.setOnReady(callback);
         }
     }
 }

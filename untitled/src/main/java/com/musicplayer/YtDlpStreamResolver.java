@@ -68,10 +68,11 @@ public class YtDlpStreamResolver {
 
         ProcessBuilder pb = new ProcessBuilder(List.of(
             "yt-dlp",
-            "-f", "140/bestaudio[ext=m4a]/bestaudio[ext=mp4]",
+            "-f", "bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio",
             "--no-playlist",
             "--no-part",
             "--retries", "1",
+            "--buffer-size", "16k",
             "-o", outputTemplate,
             videoUrl
         ));

@@ -17,10 +17,15 @@ import com.github.kiulian.downloader.model.search.SearchResultVideoDetails;
 import com.github.kiulian.downloader.model.videos.VideoDetails;
 import com.github.kiulian.downloader.model.videos.VideoInfo;
 
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class YouTubeService {
 
@@ -62,6 +67,13 @@ public class YouTubeService {
         if (youtube != null) {
             return searchVideosRealApi(query, maxResults);
         } else {
+            if (YtDlpStreamResolver.isAvailable()) {
+                try {
+                    return searchVideosYtDlp(query, maxResults);
+                } catch (Exception e) {
+                    System.err.println("yt-dlp search failed, falling back: " + e.getMessage());
+                }
+            }
             return searchVideosScraper(query, maxResults);
         }
     }
@@ -93,6 +105,59 @@ public class YouTubeService {
             }
         }
         return results;
+    }
+
+    private List<YouTubeVideo> searchVideosYtDlp(String query, int maxResults) throws Exception {
+        System.out.println("Searching YouTube with yt-dlp for: " + query);
+        List<YouTubeVideo> videos = new ArrayList<>();
+
+        String searchArg = "ytsearch" + maxResults + ":" + query;
+        ProcessBuilder pb = new ProcessBuilder(List.of(
+            "yt-dlp",
+            searchArg,
+            "--dump-json",
+            "--flat-playlist",
+            "--no-playlist",
+            "--quiet",
+            "--no-warnings",
+            "--no-color"
+        ));
+        pb.redirectErrorStream(true);
+
+        Process process = pb.start();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isEmpty() || !line.startsWith("{")) continue;
+                try {
+                    JSONObject json = new JSONObject(line);
+                    YouTubeVideo v = new YouTubeVideo();
+                    v.setId(json.optString("id", ""));
+                    v.setTitle(json.optString("title", "Unknown Title"));
+                    v.setChannel(json.optString("uploader", "Unknown Channel"));
+                    
+                    // Format duration from seconds
+                    double durationSeconds = json.optDouble("duration", 0);
+                    int mins = (int) (durationSeconds / 60);
+                    int secs = (int) (durationSeconds % 60);
+                    v.setDuration(String.format("%d:%02d", mins, secs));
+                    
+                    v.setThumbnailUrl("https://i.ytimg.com/vi/" + v.getId() + "/hqdefault.jpg");
+                    videos.add(v);
+                    System.out.println("   > Found: " + v.getTitle());
+                } catch (Exception e) {
+                    // Skip malformed lines
+                }
+            }
+        }
+        
+        boolean finished = process.waitFor(20, TimeUnit.SECONDS);
+        if (!finished) {
+            System.err.println("yt-dlp search timed out, killing process.");
+            process.destroyForcibly();
+        }
+
+        return videos;
     }
 
     private List<YouTubeVideo> searchVideosScraper(String query, int maxResults) throws IOException {
@@ -163,6 +228,15 @@ public class YouTubeService {
 
             return details;
         } else {
+            // Try yt-dlp for details if available
+            if (YtDlpStreamResolver.isAvailable()) {
+                try {
+                    return getVideoDetailsYtDlp(videoId);
+                } catch (Exception e) {
+                    System.err.println("yt-dlp details failed: " + e.getMessage());
+                }
+            }
+
             // Native scraper fallback for details
             try {
                 RequestVideoInfo request = new RequestVideoInfo(videoId);
@@ -189,6 +263,49 @@ public class YouTubeService {
             }
             return null;
         }
+    }
+    private YouTubeVideo getVideoDetailsYtDlp(String videoId) throws Exception {
+        System.out.println("Fetching video details with yt-dlp for: " + videoId);
+        String videoUrl = "https://www.youtube.com/watch?v=" + videoId;
+        
+        ProcessBuilder pb = new ProcessBuilder(List.of(
+            "yt-dlp",
+            videoUrl,
+            "--dump-json",
+            "--no-playlist",
+            "--quiet",
+            "--no-warnings",
+            "--no-color"
+        ));
+        pb.redirectErrorStream(true);
+
+        Process process = pb.start();
+        YouTubeVideo details = null;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line = reader.readLine();
+            if (line != null && line.startsWith("{")) {
+                JSONObject json = new JSONObject(line);
+                details = new YouTubeVideo();
+                details.setId(videoId);
+                details.setTitle(json.optString("title", "Unknown Title"));
+                details.setChannel(json.optString("uploader", "Unknown Channel"));
+                details.setDescription(json.optString("description", ""));
+                details.setThumbnailUrl("https://i.ytimg.com/vi/" + videoId + "/maxresdefault.jpg");
+                
+                double durationSeconds = json.optDouble("duration", 0);
+                int mins = (int) (durationSeconds / 60);
+                int secs = (int) (durationSeconds % 60);
+                details.setDuration(String.format("%d:%02d", mins, secs));
+                
+                details.setViewCount(json.optLong("view_count", 0));
+            }
+        }
+        
+        boolean finished = process.waitFor(15, TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly();
+        }
+        return details;
     }
 
     private String formatISODuration(String isoDuration) {

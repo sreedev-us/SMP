@@ -128,39 +128,53 @@
             </ScrollPane>
         </center>
 
-        <!-- Bottom Stack: Mini Player + Nav Bar -->
+        <!-- Floating Bottom Dock Container -->
         <bottom>
-            <VBox styleClass="bottom-dock-container">
+            <VBox styleClass="floating-dock-wrapper" spacing="0">
+                <padding><Insets bottom="12" left="12" right="12" /></padding>
                 
-                <!-- Mini Player -->
-                <HBox fx:id="mobilePlayerDock" styleClass="mobile-mini-player" alignment="CENTER_LEFT" spacing="10">
-                    <StackPane styleClass="mini-art-shell">
-                        <ImageView fx:id="albumArtView" fitHeight="40" fitWidth="40" preserveRatio="true" styleClass="mini-album-art" />
-                        <ProgressIndicator fx:id="loadingIndicator" prefWidth="20" prefHeight="20" visible="false" />
-                    </StackPane>
-                    <VBox alignment="CENTER_LEFT" spacing="2" HBox.hgrow="ALWAYS">
-                        <Label fx:id="songTitleLabel" text="No song selected" styleClass="mini-song-title" />
-                        <Label fx:id="artistLabel" text="Play a track" styleClass="mini-artist-name" />
-                    </VBox>
-                    <Button fx:id="playPauseButton" styleClass="mini-play-button" onAction="#handlePlayPause" />
-                    <Button styleClass="mini-next-button" onAction="#handleNext" />
-                </HBox>
-                
-                <!-- True Bottom Nav -->
-                <HBox styleClass="mobile-bottom-nav" alignment="CENTER">
-                    <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS" styleClass="nav-item-active" onMouseClicked="#handleNavHome">
+                <!-- Floating Mini Player Island -->
+                <VBox styleClass="mini-player-island">
+                    <!-- Progress Line at Top -->
+                    <ProgressBar fx:id="miniProgressLine" progress="0.0" prefHeight="2" maxWidth="Infinity" styleClass="mini-progress-line" />
+                    
+                    <HBox fx:id="mobilePlayerDock" styleClass="mobile-mini-player-inner" alignment="CENTER_LEFT" spacing="12">
+                        <StackPane styleClass="mini-art-shell">
+                            <ImageView fx:id="albumArtView" fitHeight="44" fitWidth="44" preserveRatio="true" styleClass="mini-album-art" />
+                        </StackPane>
+                        
+                        <VBox alignment="CENTER_LEFT" spacing="1" HBox.hgrow="ALWAYS">
+                            <Label fx:id="songTitleLabel" text="No song selected" styleClass="mini-song-title" />
+                            <HBox spacing="10" alignment="CENTER_LEFT">
+                                <Label fx:id="artistLabel" text="Play a track" styleClass="mini-artist-name" />
+                                <Label text="|" styleClass="mini-time-divider" />
+                                <Label fx:id="mTimeC" text="0:00" styleClass="mini-time-label" />
+                                <Label text="/" styleClass="mini-time-divider" />
+                                <Label fx:id="mTimeT" text="0:00" styleClass="mini-time-label" />
+                            </HBox>
+                        </VBox>
+                        
+                        <Button fx:id="playPauseButton" styleClass="mini-play-button-v2" onAction="#handlePlayPause" />
+                        <Button styleClass="mini-next-button-v2" onAction="#handleNext" />
+                        <Region minWidth="4" />
+                    </HBox>
+                </VBox>
+
+                <!-- Floating Navigation Island -->
+                <HBox styleClass="mobile-nav-island" alignment="CENTER">
+                    <VBox alignment="CENTER" spacing="3" HBox.hgrow="ALWAYS" styleClass="nav-item-active" onMouseClicked="#handleNavHome">
                         <Region styleClass="nav-icon-home" />
                         <Label text="Home" styleClass="nav-label" />
                     </VBox>
-                    <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS" styleClass="nav-item" onMouseClicked="#handleNavSearch">
+                    <VBox alignment="CENTER" spacing="3" HBox.hgrow="ALWAYS" styleClass="nav-item" onMouseClicked="#handleNavSearch">
                         <Region styleClass="nav-icon-search" />
                         <Label text="Search" styleClass="nav-label" />
                     </VBox>
-                    <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS" styleClass="nav-item" onMouseClicked="#handleNavLibrary">
+                    <VBox alignment="CENTER" spacing="3" HBox.hgrow="ALWAYS" styleClass="nav-item" onMouseClicked="#handleNavLibrary">
                         <Region styleClass="nav-icon-library" />
-                        <Label text="Your Library" styleClass="nav-label" />
+                        <Label text="Library" styleClass="nav-label" />
                     </VBox>
-                    <VBox alignment="CENTER" spacing="4" HBox.hgrow="ALWAYS" styleClass="nav-item" onMouseClicked="#handleNavPremium">
+                    <VBox alignment="CENTER" spacing="3" HBox.hgrow="ALWAYS" styleClass="nav-item" onMouseClicked="#handleNavPremium">
                         <Region styleClass="nav-icon-premium" />
                         <Label text="Premium" styleClass="nav-label" />
                     </VBox>
@@ -189,16 +203,17 @@
                         <HBox alignment="CENTER_LEFT" styleClass="search-input-box">
                             <Region styleClass="icon-search-small" />
                             <TextField fx:id="searchField" promptText="Artists, songs, or podcasts" styleClass="search-field" HBox.hgrow="ALWAYS" />
+                            <ProgressIndicator fx:id="loadingIndicator" visible="false" managed="false" maxHeight="20" maxWidth="20" />
                         </HBox>
                         
                         <!-- Search History & Queue hooks -->
                         <VBox fx:id="searchHistorySection" visible="false" managed="false" />
                         <FlowPane fx:id="searchHistoryContainer" visible="false" managed="false" />
-                        <ListView fx:id="searchResultsList" styleClass="invisible-hooks" visible="false" managed="false" />
+                        <ListView fx:id="searchResultsList" styleClass="mobile-search-results-list" visible="false" managed="false" VBox.vgrow="ALWAYS" minHeight="400" />
                         <ListView fx:id="playlistView" styleClass="invisible-hooks" visible="false" managed="false" />
                         
                         <!-- Static Categories Grid matching Image 3 -->
-                        <FlowPane hgap="12" vgap="12">
+                        <FlowPane fx:id="searchCategoriesBox" hgap="12" vgap="12">
                             <VBox styleClass="cat-gray" prefWidth="180" minHeight="110">
                                 <Label text="Browse All" styleClass="cat-title" />
                                 <Region styleClass="cat-icon-grid" VBox.vgrow="ALWAYS" />
@@ -430,21 +445,25 @@
             </HBox>
 
             <!-- Lyrics Panel -->
-            <VBox styleClass="now-playing-lyrics-panel">
-                <HBox alignment="CENTER_LEFT">
+            <VBox styleClass="now-playing-lyrics-panel" VBox.vgrow="ALWAYS" maxHeight="400">
+                <HBox alignment="CENTER_LEFT" spacing="10">
                     <Label text="Lyrics" styleClass="lyrics-panel-title" />
                     <Region HBox.hgrow="ALWAYS" />
+                    <Label fx:id="expandedLyricsBadgeLabel" styleClass="lyrics-badge-styled" />
                     <Region styleClass="icon-expand" />
                 </HBox>
+                
+                <VBox spacing="4" VBox.vgrow="ALWAYS">
+                    <Label fx:id="lyricsHeadlineLabel" styleClass="lyrics-headline-mobile" />
+                    <Label fx:id="lyricsSourceLabel" styleClass="lyrics-source-mobile" />
+                    <ScrollPane fx:id="lyricsScrollPane" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="NEVER" styleClass="lyrics-scroll-mobile" VBox.vgrow="ALWAYS">
+                        <VBox fx:id="lyricsContainer" styleClass="lyrics-container-mobile" spacing="8" />
+                    </ScrollPane>
+                </VBox>
             </VBox>
             
-            <Label fx:id="expandedLyricsBadgeLabel" visible="false" managed="false" />
             <Label fx:id="userInfoLabel" visible="false" managed="false" />
             <Label fx:id="statusLabel" visible="false" managed="false" />
-            <ScrollPane fx:id="lyricsScrollPane" visible="false" managed="false" />
-            <VBox fx:id="lyricsContainer" visible="false" managed="false" />
-            <Label fx:id="lyricsHeadlineLabel" visible="false" managed="false" />
-            <Label fx:id="lyricsSourceLabel" visible="false" managed="false" />
             <Button fx:id="menuButton" visible="false" managed="false" />
             
             <Region VBox.vgrow="ALWAYS" />

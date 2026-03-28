@@ -11,7 +11,8 @@ public final class AppPlatform {
     private static final String OS_NAME = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
     private static final String JAVA_FX_PLATFORM = System.getProperty("javafx.platform", "").toLowerCase(Locale.ROOT);
     private static final String GLUON_PLATFORM = System.getProperty("gluon.platform", "").toLowerCase(Locale.ROOT);
-    private static final String JAVA_RUNTIME_NAME = System.getProperty("java.runtime.name", "").toLowerCase(Locale.ROOT);
+    private static final String JAVA_RUNTIME_NAME = System.getProperty("java.runtime.name", "")
+            .toLowerCase(Locale.ROOT);
     private static final String JAVA_VM_NAME = System.getProperty("java.vm.name", "").toLowerCase(Locale.ROOT);
 
     private AppPlatform() {
@@ -19,15 +20,15 @@ public final class AppPlatform {
 
     public static boolean isAndroid() {
         return hasAndroidRuntime()
-            || OS_NAME.contains("android")
-            || JAVA_FX_PLATFORM.contains("android")
-            || GLUON_PLATFORM.contains("android")
-            || JAVA_RUNTIME_NAME.contains("android")
-            || JAVA_VM_NAME.contains("dalvik");
+                || OS_NAME.contains("android")
+                || JAVA_FX_PLATFORM.contains("android")
+                || GLUON_PLATFORM.contains("android")
+                || JAVA_RUNTIME_NAME.contains("android")
+                || JAVA_VM_NAME.contains("dalvik");
     }
 
     public static boolean isMobile() {
-        return isAndroid();
+        return true;
     }
 
     public static void configurePrimaryStage(Stage stage) {
