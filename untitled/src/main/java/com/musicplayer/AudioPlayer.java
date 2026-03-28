@@ -38,9 +38,18 @@ public class AudioPlayer {
         }
 
         System.out.println("AudioPlayer: Loading media from URI: " + mediaUri);
-        Media media = new Media(mediaUri);
-        mediaPlayer = new MediaPlayer(media);
-        mediaPlayer.setVolume(volume);
+        try {
+            Media media = new Media(mediaUri);
+            mediaPlayer = new MediaPlayer(media);
+            mediaPlayer.setVolume(volume);
+        } catch (Throwable t) {
+            System.err.println("--- AudioPlayer INITIALIZATION THROWABLE ---");
+            t.printStackTrace();
+            if (onError != null) {
+                onError.accept("Media Init Error: " + t.getClass().getSimpleName() + ": " + t.getMessage());
+            }
+            return;
+        }
 
         mediaPlayer.setOnError(() -> {
             String errorMsg = mediaPlayer.getError() != null ? mediaPlayer.getError().getMessage() : "Unknown MediaPlayer Error";

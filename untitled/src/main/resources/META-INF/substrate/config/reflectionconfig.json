@@ -270,37 +270,49 @@
     "allDeclaredMethods": true
   },
   {
-    "name": "com.github.kiulian.downloader.model.VideoInfo",
+    "name": "com.github.kiulian.downloader.downloader.request.RequestVideoInfo",
     "allDeclaredConstructors": true,
     "allDeclaredFields": true,
     "allDeclaredMethods": true
   },
   {
-    "name": "com.github.kiulian.downloader.model.VideoDetails",
+    "name": "com.github.kiulian.downloader.downloader.response.Response",
     "allDeclaredConstructors": true,
     "allDeclaredFields": true,
     "allDeclaredMethods": true
   },
   {
-    "name": "com.github.kiulian.downloader.model.formats.Format",
+    "name": "com.github.kiulian.downloader.model.videos.VideoInfo",
     "allDeclaredConstructors": true,
     "allDeclaredFields": true,
     "allDeclaredMethods": true
   },
   {
-    "name": "com.github.kiulian.downloader.model.formats.AudioFormat",
+    "name": "com.github.kiulian.downloader.model.videos.VideoDetails",
     "allDeclaredConstructors": true,
     "allDeclaredFields": true,
     "allDeclaredMethods": true
   },
   {
-    "name": "com.github.kiulian.downloader.model.formats.VideoFormat",
+    "name": "com.github.kiulian.downloader.model.videos.formats.Format",
     "allDeclaredConstructors": true,
     "allDeclaredFields": true,
     "allDeclaredMethods": true
   },
   {
-    "name": "com.github.kiulian.downloader.model.formats.VideoWithAudioFormat",
+    "name": "com.github.kiulian.downloader.model.videos.formats.AudioFormat",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "com.github.kiulian.downloader.model.videos.formats.VideoFormat",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "com.github.kiulian.downloader.model.videos.formats.VideoWithAudioFormat",
     "allDeclaredConstructors": true,
     "allDeclaredFields": true,
     "allDeclaredMethods": true

@@ -508,7 +508,8 @@ public class FxMusicPlayer {
                     completed[0] = true;
                     setLoading(false);
                     try {
-                        updateStatus("Player initializing...");
+                        String displayUrl = (streamUrl != null && streamUrl.length() > 30) ? streamUrl.substring(0, 30) : streamUrl;
+                        updateStatus("URL: " + displayUrl + "...");
                         audioPlayer.play(streamUrl);
                         onPlaybackStarted();
                         updateStatus("Buffering...");
