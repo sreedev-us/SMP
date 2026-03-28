@@ -1226,7 +1226,7 @@ public class FxMusicPlayer {
 
     //  Utility 
 
-    private void updateStatus(String msg) {
+    public void updateStatus(String msg) {
         if (statusLabel != null) statusLabel.setText(msg);
         if (mobileSettingsStatusLabel != null) mobileSettingsStatusLabel.setText(msg);
     }
@@ -1392,11 +1392,16 @@ public class FxMusicPlayer {
         }
 
         String youtubeUrl = "https://www.youtube.com/watch?v=" + song.getVideoId();
+        updateStatus("BROWSER TRIGGERED...");
         externalUrlOpener.accept(youtubeUrl);
         isPlaying = false;
         isPaused = false;
         updatePlayPauseLabel();
-        updateStatus("Opening YouTube: " + song.getTitle());
+        
+        new Thread(() -> {
+            try { Thread.sleep(2000); } catch (Exception ignored) {}
+            Platform.runLater(() -> updateStatus("Opening YouTube: " + song.getTitle()));
+        }).start();
     }
 
     private void hideSettingsOverlay() {

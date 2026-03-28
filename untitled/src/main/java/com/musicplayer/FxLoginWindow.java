@@ -131,7 +131,17 @@ public class FxLoginWindow extends Application {
             SettingsManager settings = new SettingsManager();
 
             playerController = new FxMusicPlayer(activeAuth, settings);
-            playerController.setExternalUrlOpener(url -> getHostServices().showDocument(url));
+            playerController.setExternalUrlOpener(url -> {
+                System.out.println("ExternalOpener: Attempting to open " + url);
+                try {
+                    getHostServices().showDocument(url);
+                    System.out.println("ExternalOpener: showDocument call completed");
+                } catch (Exception ex) {
+                    System.err.println("ExternalOpener error: " + ex.getMessage());
+                    ex.printStackTrace();
+                    Platform.runLater(() -> playerController.updateStatus("Error: Can't open browser."));
+                }
+            });
 
             String playerView = AppPlatform.isMobile()
                 ? "/com/musicplayer/PlayerViewMobile.fxml"
