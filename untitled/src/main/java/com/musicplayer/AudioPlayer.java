@@ -43,7 +43,12 @@ public class AudioPlayer {
 
         mediaPlayer.setOnError(() -> {
             String errorMsg = mediaPlayer.getError() != null ? mediaPlayer.getError().getMessage() : "Unknown MediaPlayer Error";
-            System.err.println("MediaPlayer error: " + errorMsg);
+            System.err.println("--- MediaPlayer CRITICAL Error ---");
+            System.err.println("Message: " + errorMsg);
+            if (mediaPlayer.getError() != null) {
+                System.err.println("Error Type: " + mediaPlayer.getError().getType());
+            }
+            System.err.println("Media URI: " + mediaUri);
         });
 
         // Wire end-of-media callback (auto-advance)

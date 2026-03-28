@@ -31,6 +31,15 @@ public class YtDlpStreamResolver {
             throw new IllegalArgumentException("Missing YouTube video ID");
         }
 
+        // If on mobile, prefer streaming URL directly to avoid slow downloads & permission issues
+        if (AppPlatform.isMobile()) {
+            try {
+                return resolveStreamUrl(videoId);
+            } catch (Exception e) {
+                System.err.println("Direct streaming resolution failed, falling back to download: " + e.getMessage());
+            }
+        }
+
         if (tempDir == null || !tempDir.toFile().exists()) {
             tempDir = Files.createTempDirectory("harmony-audio-");
             tempDir.toFile().deleteOnExit();
@@ -51,6 +60,41 @@ public class YtDlpStreamResolver {
         }
 
         return resolveWithJavaDownloader(videoId, outputFile);
+    }
+
+    public static String resolveStreamUrl(String videoId) throws Exception {
+        System.out.println("Resolving direct stream URL for: " + videoId);
+        YoutubeDownloader downloader = new YoutubeDownloader();
+        RequestVideoInfo request = new RequestVideoInfo(videoId);
+        Response<VideoInfo> response = downloader.getVideoInfo(request);
+        VideoInfo info = response.data();
+        
+        if (info == null) {
+            String message = response.error() != null && response.error().getMessage() != null
+                ? response.error().getMessage()
+                : "Video metadata is unavailable";
+            throw createPlaybackException(videoId, message, null);
+        }
+
+        List<AudioFormat> audioFormats = info.audioFormats();
+        if (audioFormats == null || audioFormats.isEmpty()) {
+            throw createPlaybackException(videoId, "No audio streams found", null);
+        }
+
+        // Prefer m4a/mp4 for JavaFX compatibility
+        AudioFormat bestFormat = audioFormats.stream()
+            .filter(f -> f.extension().toString().toLowerCase().contains("m4a")
+                || f.extension().toString().toLowerCase().contains("mp4"))
+            .max(Comparator.comparingInt(Format::bitrate))
+            .orElse(audioFormats.get(0));
+
+        String formatUrl = bestFormat.url();
+        if (formatUrl == null || formatUrl.isBlank()) {
+            throw createPlaybackException(videoId, "Selected audio stream does not include a download URL", null);
+        }
+
+        System.out.println("Direct stream resolved: " + formatUrl.substring(0, Math.min(formatUrl.length(), 100)) + "...");
+        return formatUrl;
     }
 
     private static String resolveWithYtDlp(String videoId, File outputFile) throws Exception {
