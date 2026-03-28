@@ -1,5 +1,6 @@
 package com.musicplayer;
 
+import com.github.kiulian.downloader.Config;
 import com.github.kiulian.downloader.YoutubeDownloader;
 import com.github.kiulian.downloader.downloader.request.RequestVideoInfo;
 import com.github.kiulian.downloader.downloader.response.Response;
@@ -25,7 +26,10 @@ public class YtDlpStreamResolver {
 
     private static final int TIMEOUT_SECONDS = 120;
     private static Path tempDir = null;
-    private static final YoutubeDownloader downloader = new YoutubeDownloader();
+    private static final Config downloaderConfig = new Config.Builder()
+        .maxRetries(5)
+        .build();
+    private static final YoutubeDownloader downloader = new YoutubeDownloader(downloaderConfig);
 
     public static String resolve(String videoId) throws Exception {
         if (videoId == null || videoId.isBlank()) {
@@ -185,7 +189,6 @@ public class YtDlpStreamResolver {
 
     private static String resolveWithJavaDownloader(String videoId, File outputFile) throws Exception {
         System.out.println("Native Java download started for: " + videoId);
-        YoutubeDownloader downloader = new YoutubeDownloader();
         RequestVideoInfo request = new RequestVideoInfo(videoId);
         Response<VideoInfo> response = downloader.getVideoInfo(request);
         VideoInfo info = response.data();
