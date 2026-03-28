@@ -665,6 +665,13 @@
     -fx-padding: 0;
 }
 
+.status-label-diagnostic {
+    -fx-text-fill: #ff4444 !important;
+    -fx-font-weight: bold !important;
+    -fx-font-size: 15px !important;
+    -fx-background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
 .mobile-status-row {
     -fx-background-color: rgba(255, 255, 255, 0.05);
     -fx-background-radius: 18;

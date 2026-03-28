@@ -284,7 +284,13 @@ public class FxMusicPlayer {
         }
 
         // Setup responsive layout listener (runs after scene is created)
-        Platform.runLater(this::setupResponsiveListener);
+        Platform.runLater(() -> {
+            setupResponsiveListener();
+            if (statusLabel != null) {
+                statusLabel.getStyleClass().add("status-label-diagnostic");
+                updateStatus("App Ready - Select a track");
+            }
+        });
     }
 
     private void setupResponsiveListener() {
@@ -341,19 +347,35 @@ public class FxMusicPlayer {
     //  UI Helpers 
 
     private void configureListView(ListView<SongData> listView) {
-        listView.setCellFactory(lv -> new ListCell<>() {
-            @Override
-            protected void updateItem(SongData song, boolean empty) {
-                super.updateItem(song, empty);
-                if (empty || song == null) {
-                    setText(null);
-                    setGraphic(null);
-                } else {
-                    String icon = "youtube".equals(song.getType()) ? "YouTube: " : "File: ";
-                    String issue = song.isGuestPlaybackBlocked() ? " [Guest blocked]" : "";
-                    setText(icon + song.getDisplayName() + issue);
+        listView.setCellFactory(lv -> {
+            ListCell<SongData> cell = new ListCell<>() {
+                @Override
+                protected void updateItem(SongData song, boolean empty) {
+                    super.updateItem(song, empty);
+                    if (empty || song == null) {
+                        setText(null);
+                        setGraphic(null);
+                    } else {
+                        String icon = "youtube".equals(song.getType()) ? "YouTube: " : "File: ";
+                        String issue = song.isGuestPlaybackBlocked() ? " [Guest blocked]" : "";
+                        setText(icon + song.getDisplayName() + issue);
+                    }
                 }
-            }
+            };
+            
+            // Step 6: Robust touch/click listener on the cell itself
+            cell.setOnMouseClicked(e -> {
+                if (!cell.isEmpty() && cell.getItem() != null) {
+                    System.out.println("UI: Cell Clicked for " + cell.getItem().getTitle());
+                    if (listView == searchResultsList) {
+                        addToQueueAndPlay(cell.getItem());
+                    } else if (listView == playlistView && e.getClickCount() == 2) {
+                        handlePlaylistDoubleClick();
+                    }
+                }
+            });
+            
+            return cell;
         });
     }
 
@@ -450,6 +472,7 @@ public class FxMusicPlayer {
         // Fresh play
         audioPlayer.stop();
         SongData song = playlist.get(currentSongIndex);
+        updateStatus("PLAY: " + song.getTitle() + " [" + (song.getType() != null ? song.getType() : "unknown") + "]");
         updateNowPlaying(song);
 
         if ("local".equals(song.getType())) {
@@ -482,7 +505,7 @@ public class FxMusicPlayer {
             return;
         }
 
-        updateStatus("Resolving audio: " + song.getTitle() + "...");
+        updateStatus("RESOLVE: " + song.getTitle());
         setLoading(true);
 
         new Thread(() -> {
@@ -500,6 +523,7 @@ public class FxMusicPlayer {
 
             try {
                 Platform.runLater(() -> updateStatus("Resolving stream..."));
+                updateStatus("Watchdog: Started");
                 String streamUrl = resolveOnlineStream(song);
                 
                 System.out.println("DEBUG: Resolved stream URL: " + (streamUrl != null ? streamUrl.substring(0, Math.min(streamUrl.length(), 50)) : "null"));
