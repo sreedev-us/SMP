@@ -10,7 +10,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.stage.Stage;
 
-import com.gluonhq.attach.browser.BrowserService;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -137,24 +136,9 @@ public class FxLoginWindow extends Application {
                 System.out.println("ExternalOpener: Attempting to open " + url);
                 try {
                     if (AppPlatform.isAndroid()) {
-                        // On Android, getHostServices().showDocument() is a no-op.
-                        // Use Gluon BrowserService which fires a real Android Intent.
-                        BrowserService.create().ifPresentOrElse(
-                            browser -> {
-                                try {
-                                    browser.launchExternalBrowser(url);
-                                    System.out.println("ExternalOpener: Android BrowserService launched.");
-                                } catch (Exception ex) {
-                                    System.err.println("ExternalOpener BrowserService error: " + ex.getMessage());
-                                    ex.printStackTrace();
-                                    Platform.runLater(() -> playerController.updateStatus("Error: Browser launch failed - " + ex.getClass().getSimpleName()));
-                                }
-                            },
-                            () -> {
-                                System.err.println("ExternalOpener: BrowserService not available on this device.");
-                                Platform.runLater(() -> playerController.updateStatus("Error: Browser service unavailable."));
-                            }
-                        );
+                        // BrowserService throws IOException on MIUI / Android 11+.
+                        // Fire a real Android Intent directly via reflection — this always works on Dalvik/ART.
+                        openUrlViaAndroidIntent(url);
                     } else {
                         getHostServices().showDocument(url);
                         System.out.println("ExternalOpener: Desktop showDocument call completed");
@@ -162,7 +146,7 @@ public class FxLoginWindow extends Application {
                 } catch (Exception ex) {
                     System.err.println("ExternalOpener error: " + ex.getMessage());
                     ex.printStackTrace();
-                    Platform.runLater(() -> playerController.updateStatus("Error: Can't open browser."));
+                    Platform.runLater(() -> playerController.updateStatus("Error: Can't open browser - " + ex.getClass().getSimpleName()));
                 }
             });
 
@@ -259,5 +243,42 @@ public class FxLoginWindow extends Application {
             url = FxLoginWindow.class.getClassLoader().getResource(classLoaderPath);
         }
         return url;
+    }
+
+    /**
+     * Opens a URL on Android by firing a real Intent.ACTION_VIEW via reflection.
+     * This bypasses Gluon BrowserService which throws IOException on MIUI/Android 11+.
+     * Works on any Dalvik/ART runtime without needing the Android SDK at compile time.
+     */
+    private static void openUrlViaAndroidIntent(String urlString) throws Exception {
+        System.out.println("openUrlViaAndroidIntent: " + urlString);
+
+        Class<?> uriClass    = Class.forName("android.net.Uri");
+        Class<?> intentClass = Class.forName("android.content.Intent");
+
+        // Uri.parse(urlString)
+        Object uri = uriClass.getMethod("parse", String.class).invoke(null, urlString);
+
+        // new Intent(Intent.ACTION_VIEW, uri)
+        String ACTION_VIEW = (String) intentClass.getField("ACTION_VIEW").get(null);
+        Object intent = intentClass
+            .getConstructor(String.class, Class.forName("android.net.Uri"))
+            .newInstance(ACTION_VIEW, uri);
+
+        // intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        int FLAG_ACTIVITY_NEW_TASK = intentClass.getField("FLAG_ACTIVITY_NEW_TASK").getInt(null);
+        intentClass.getMethod("addFlags", int.class).invoke(intent, FLAG_ACTIVITY_NEW_TASK);
+
+        // Get the current Android context via ActivityThread
+        Class<?> atClass  = Class.forName("android.app.ActivityThread");
+        Object at         = atClass.getMethod("currentActivityThread").invoke(null);
+        Object application = atClass.getMethod("getApplication").invoke(at);
+
+        // context.startActivity(intent)
+        application.getClass()
+            .getMethod("startActivity", intentClass)
+            .invoke(application, intent);
+
+        System.out.println("openUrlViaAndroidIntent: startActivity dispatched successfully.");
     }
 }
