@@ -148,7 +148,12 @@ public class FxLoginWindow extends Application {
             AppPlatform.configurePrimaryStage(primaryStage);
 
         } catch (Exception e) {
+            System.err.println("--- CRITICAL FXML LOAD ERROR ---");
             e.printStackTrace();
+            if (e.getCause() != null) {
+                System.err.println("CAUSE:");
+                e.getCause().printStackTrace();
+            }
             String detail = e.getMessage();
             statusLabel.setText("Failed to load player: " + e.getClass().getSimpleName()
                 + (detail == null || detail.isBlank() ? "" : " - " + detail));

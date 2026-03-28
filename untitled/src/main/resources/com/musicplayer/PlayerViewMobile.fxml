@@ -136,7 +136,7 @@
                 <!-- Floating Mini Player Island -->
                 <VBox styleClass="mini-player-island">
                     <!-- Progress Line at Top -->
-                    <ProgressBar fx:id="miniProgressLine" progress="0.0" prefHeight="2" maxWidth="Infinity" styleClass="mini-progress-line" />
+                    <ProgressBar fx:id="miniProgressLine" progress="0.0" prefHeight="2" maxWidth="-1" styleClass="mini-progress-line" />
                     
                     <HBox fx:id="mobilePlayerDock" styleClass="mobile-mini-player-inner" alignment="CENTER_LEFT" spacing="12">
                         <StackPane styleClass="mini-art-shell">
