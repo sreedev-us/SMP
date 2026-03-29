@@ -119,6 +119,14 @@
             <artifactId>browser</artifactId>
             <version>4.0.19</version>
         </dependency>
+
+        <!-- Android SDK JAR (compile-only) for GraalVM reflection analysis -->
+        <dependency>
+            <groupId>com.google.android</groupId>
+            <artifactId>android</artifactId>
+            <version>4.1.1.4</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -208,6 +216,8 @@
                         <configuration>
                             <target>${gluonfx.target}</target>
                             <graalvmHome>${env.GRAALVM_HOME}</graalvmHome>
+                            <androidSdk>${env.ANDROID_SDK_ROOT}</androidSdk>
+                            <androidNdk>${env.ANDROID_NDK}</androidNdk>
                             <attachList>
                                 <list>browser</list>
                                 <list>display</list>
