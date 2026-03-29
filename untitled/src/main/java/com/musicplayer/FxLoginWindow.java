@@ -242,11 +242,29 @@ public class FxLoginWindow extends Application {
 
     private void fireAndroidIntent(String url) {
         try {
-            System.out.println("ExternalOpener: Firing direct Android Intent for " + url);
-            // 1. Get current Activity via reflection (Gluon FXActivity)
-            Class<?> fxActivityClass = Class.forName("com.gluonhq.substrate.android.FXActivity");
-            Method getInstanceMethod = fxActivityClass.getMethod("getInstance");
-            Object activity = getInstanceMethod.invoke(null);
+            System.out.println("ExternalOpener: Scanning for Android Activity...");
+            String[] activityClasses = {
+                "com.gluonhq.substrate.android.FXActivity",
+                "com.gluonhq.substrate.android.SubstrateActivity",
+                "org.javafxports.android.FXActivity"
+            };
+
+            Object activity = null;
+            for (String className : activityClasses) {
+                try {
+                    Class<?> clazz = Class.forName(className);
+                    Method getInstanceMethod = clazz.getMethod("getInstance");
+                    activity = getInstanceMethod.invoke(null);
+                    if (activity != null) {
+                        System.out.println("ExternalOpener: Found Activity class: " + className);
+                        break;
+                    }
+                } catch (Throwable ignored) {}
+            }
+
+            if (activity == null) {
+                throw new ClassNotFoundException("No valid FX Activity class found in scan.");
+            }
 
             // 2. Prepare Intent (Intent.ACTION_VIEW, Uri.parse(url))
             Class<?> intentClass = Class.forName("android.content.Intent");
