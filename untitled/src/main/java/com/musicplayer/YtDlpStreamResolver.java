@@ -28,7 +28,8 @@ public class YtDlpStreamResolver {
     private static final int TIMEOUT_SECONDS = 120;
     private static Path tempDir = null;
     private static final Config downloaderConfig = new Config.Builder()
-        .maxRetries(5)
+        .maxRetries(10)
+        .header("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")
         .build();
     private static final YoutubeDownloader downloader = new YoutubeDownloader(downloaderConfig);
 

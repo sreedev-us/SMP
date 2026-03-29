@@ -12,6 +12,8 @@ import javafx.stage.Stage;
 
 import com.gluonhq.attach.browser.BrowserService;
 
+import java.lang.reflect.Method;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -143,16 +145,15 @@ public class FxLoginWindow extends Application {
                             browser -> {
                                 try {
                                     browser.launchExternalBrowser(url);
-                                    System.out.println("ExternalOpener: Android BrowserService launched.");
+                                    System.out.println("ExternalOpener: Android BrowserService SUCCESS.");
                                 } catch (Exception ex) {
-                                    System.err.println("ExternalOpener BrowserService error: " + ex.getMessage());
-                                    ex.printStackTrace();
-                                    Platform.runLater(() -> playerController.updateStatus("Error: Browser - " + ex.getClass().getSimpleName() + " - " + ex.getMessage()));
+                                    System.err.println("ExternalOpener BrowserService error: " + ex.getMessage() + ". Trying reflection...");
+                                    fireAndroidIntent(url);
                                 }
                             },
                             () -> {
-                                System.err.println("ExternalOpener: BrowserService not available.");
-                                Platform.runLater(() -> playerController.updateStatus("Error: Browser service unavailable."));
+                                System.err.println("ExternalOpener: BrowserService not available. Trying reflection...");
+                                fireAndroidIntent(url);
                             }
                         );
                     } else {
@@ -236,6 +237,34 @@ public class FxLoginWindow extends Application {
             scene.getStylesheets().add(url.toExternalForm());
         } else {
             System.err.println("Stylesheet not found: " + path);
+        }
+    }
+
+    private void fireAndroidIntent(String url) {
+        try {
+            System.out.println("ExternalOpener: Firing direct Android Intent for " + url);
+            // 1. Get current Activity via reflection (Gluon FXActivity)
+            Class<?> fxActivityClass = Class.forName("com.gluonhq.substrate.android.FXActivity");
+            Method getInstanceMethod = fxActivityClass.getMethod("getInstance");
+            Object activity = getInstanceMethod.invoke(null);
+
+            // 2. Prepare Intent (Intent.ACTION_VIEW, Uri.parse(url))
+            Class<?> intentClass = Class.forName("android.content.Intent");
+            Class<?> uriClass = Class.forName("android.net.Uri");
+            Method uriParseMethod = uriClass.getMethod("parse", String.class);
+            Object uri = uriParseMethod.invoke(null, url);
+
+            Object intent = intentClass.getConstructor(String.class, uriClass)
+                .newInstance("android.intent.action.VIEW", uri);
+
+            // 3. Start Activity
+            Method startActivityMethod = activity.getClass().getMethod("startActivity", intentClass);
+            startActivityMethod.invoke(activity, intent);
+            System.out.println("ExternalOpener: Reflection intent firing SUCCESS.");
+        } catch (Exception ex) {
+            System.err.println("ExternalOpener: Reflection intent firing FAILED: " + ex.getMessage());
+            ex.printStackTrace();
+            Platform.runLater(() -> playerController.updateStatus("Error: Browser launch failed - " + ex.getMessage()));
         }
     }
 
