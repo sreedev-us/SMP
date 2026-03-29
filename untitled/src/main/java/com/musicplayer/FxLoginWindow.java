@@ -242,47 +242,79 @@ public class FxLoginWindow extends Application {
 
     private void fireAndroidIntent(String url) {
         try {
-            System.out.println("ExternalOpener: Scanning for Android Activity...");
-            String[] activityClasses = {
-                "com.gluonhq.substrate.android.FXActivity",
-                "com.gluonhq.substrate.android.SubstrateActivity",
-                "org.javafxports.android.FXActivity"
-            };
+            System.out.println("ExternalOpener: Firing Android VIEW intent for: " + url);
 
+            // Strategy 1: Use ActivityThread.currentActivity() — universally available on
+            // all Android builds, not reliant on any Gluon-specific class names.
             Object activity = null;
-            for (String className : activityClasses) {
-                try {
-                    Class<?> clazz = Class.forName(className);
-                    Method getInstanceMethod = clazz.getMethod("getInstance");
-                    activity = getInstanceMethod.invoke(null);
-                    if (activity != null) {
-                        System.out.println("ExternalOpener: Found Activity class: " + className);
-                        break;
-                    }
-                } catch (Throwable ignored) {}
+            try {
+                Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+                Method currentActivityMethod = activityThreadClass.getMethod("currentActivity");
+                activity = currentActivityMethod.invoke(null);
+                if (activity != null) {
+                    System.out.println("ExternalOpener: Got activity via ActivityThread.currentActivity().");
+                }
+            } catch (Throwable ignored) {
+                System.err.println("ExternalOpener: ActivityThread approach failed, trying Gluon class scan...");
+            }
+
+            // Strategy 2: Scan known Gluon/JFXPorts Activity class names as fallback.
+            if (activity == null) {
+                String[] activityClasses = {
+                    "com.gluonhq.substrate.android.FXActivity",
+                    "com.gluonhq.impl.substratevm.android.SubstrateActivity",
+                    "com.gluonhq.substrate.android.SubstrateActivity",
+                    "com.gluonhq.glass.ui.android.MainActivity",
+                    "org.javafxports.android.FXActivity"
+                };
+                for (String className : activityClasses) {
+                    try {
+                        Class<?> clazz = Class.forName(className);
+                        for (String methodName : new String[]{ "getInstance", "currentActivity" }) {
+                            try {
+                                Object result = clazz.getMethod(methodName).invoke(null);
+                                if (result != null) {
+                                    activity = result;
+                                    System.out.println("ExternalOpener: Found Activity via "
+                                        + className + "." + methodName + "()");
+                                    break;
+                                }
+                            } catch (Throwable ignored) {}
+                        }
+                        if (activity != null) break;
+                    } catch (Throwable ignored) {}
+                }
             }
 
             if (activity == null) {
-                throw new ClassNotFoundException("No valid FX Activity class found in scan.");
+                throw new RuntimeException("Could not obtain Android Activity via any strategy.");
             }
 
-            // 2. Prepare Intent (Intent.ACTION_VIEW, Uri.parse(url))
+            // Build android.content.Intent for ACTION_VIEW with the URL
             Class<?> intentClass = Class.forName("android.content.Intent");
-            Class<?> uriClass = Class.forName("android.net.Uri");
-            Method uriParseMethod = uriClass.getMethod("parse", String.class);
-            Object uri = uriParseMethod.invoke(null, url);
+            Class<?> uriClass    = Class.forName("android.net.Uri");
+            Object   uri         = uriClass.getMethod("parse", String.class).invoke(null, url);
 
-            Object intent = intentClass.getConstructor(String.class, uriClass)
+            Object intent = intentClass
+                .getConstructor(String.class, uriClass)
                 .newInstance("android.intent.action.VIEW", uri);
 
-            // 3. Start Activity
-            Method startActivityMethod = activity.getClass().getMethod("startActivity", intentClass);
-            startActivityMethod.invoke(activity, intent);
-            System.out.println("ExternalOpener: Reflection intent firing SUCCESS.");
+            // Add FLAG_ACTIVITY_NEW_TASK so it works from non-activity contexts
+            try {
+                java.lang.reflect.Field flagField = intentClass.getField("FLAG_ACTIVITY_NEW_TASK");
+                int flag = (int) flagField.get(null);
+                intentClass.getMethod("addFlags", int.class).invoke(intent, flag);
+            } catch (Throwable ignored) {}
+
+            activity.getClass().getMethod("startActivity", intentClass).invoke(activity, intent);
+            System.out.println("ExternalOpener: Android VIEW intent fired successfully.");
+
         } catch (Exception ex) {
-            System.err.println("ExternalOpener: Reflection intent firing FAILED: " + ex.getMessage());
+            System.err.println("ExternalOpener: Intent firing FAILED: " + ex.getClass().getSimpleName()
+                + ": " + ex.getMessage());
             ex.printStackTrace();
-            Platform.runLater(() -> playerController.updateStatus("Error: Browser launch failed - " + ex.getMessage()));
+            Platform.runLater(() -> playerController.updateStatus(
+                "Can't open browser: " + ex.getMessage()));
         }
     }
 

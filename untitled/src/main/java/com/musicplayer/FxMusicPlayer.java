@@ -550,14 +550,18 @@ public class FxMusicPlayer {
                 completed[0] = true;
                 Platform.runLater(() -> {
                     setLoading(false);
-                    updateStatus("Error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
                     if (shouldUseOfficialYouTubePlayback()) {
-                        new Thread(() -> {
-                            try { Thread.sleep(5000); } catch (Exception ignored) {}
-                            Platform.runLater(() -> openSongInYouTube(song));
-                        }).start();
+                        // On Android guest mode, open YouTube immediately without
+                        // showing the raw technical error message.
+                        updateStatus("Opening in YouTube...");
+                        openSongInYouTube(song);
                         return;
                     }
+                    // On desktop or logged-in users: show the error and try to advance
+                    String rawMsg = e.getMessage();
+                    String displayMsg = (rawMsg != null && rawMsg.length() > 120)
+                        ? rawMsg.substring(0, 120) + "..." : rawMsg;
+                    updateStatus("Stream error: " + displayMsg);
                     handlePlaybackFailure(song, new Exception(e));
                 });
             }

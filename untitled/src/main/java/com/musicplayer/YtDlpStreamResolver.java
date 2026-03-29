@@ -72,7 +72,14 @@ public class YtDlpStreamResolver {
     }
 
     public static String resolveStreamUrl(String videoId) throws Exception {
-        ClientType[] clients = {ClientType.ANDROID, ClientType.WEB};
+        // Ordered by likelihood of bypassing YouTube's guest-mode restrictions.
+        // TVHTML5_SIMPLY_EMBEDDED_PLAYER and IOS clients typically don't need PO tokens.
+        ClientType[] clients = {
+            ClientType.TVHTML5_SIMPLY_EMBEDDED_PLAYER,
+            ClientType.IOS,
+            ClientType.ANDROID,
+            ClientType.WEB
+        };
         Throwable lastError = null;
 
         for (ClientType client : clients) {
@@ -80,7 +87,7 @@ public class YtDlpStreamResolver {
                 System.out.println("Resolving direct stream URL via [" + client + "] for: " + videoId);
                 RequestVideoInfo request = new RequestVideoInfo(videoId).clientType(client);
                 Response<VideoInfo> response = downloader.getVideoInfo(request);
-                
+
                 VideoInfo info = response.data();
                 if (info == null) {
                     System.err.println("Client [" + client + "] returned no metadata.");
@@ -93,7 +100,7 @@ public class YtDlpStreamResolver {
                     continue;
                 }
 
-                // Prefer m4a/mp4 for JavaFX compatibility
+                // Prefer m4a/mp4 for JavaFX MediaPlayer compatibility
                 AudioFormat bestFormat = audioFormats.stream()
                     .filter(f -> f.extension().toString().toLowerCase().contains("m4a")
                         || f.extension().toString().toLowerCase().contains("mp4"))
@@ -106,17 +113,24 @@ public class YtDlpStreamResolver {
                     continue;
                 }
 
-                System.out.println("Direct stream resolved via [" + client + "]: " + formatUrl.substring(0, Math.min(formatUrl.length(), 100)) + "...");
+                // Basic sanity check — must be an https URL
+                if (!formatUrl.startsWith("http://") && !formatUrl.startsWith("https://")) {
+                    System.err.println("Client [" + client + "] returned a non-HTTP URL, skipping.");
+                    continue;
+                }
+
+                System.out.println("Direct stream resolved via [" + client + "]: "
+                    + formatUrl.substring(0, Math.min(formatUrl.length(), 100)) + "...");
                 return formatUrl;
-                
+
             } catch (Throwable t) {
                 lastError = t;
                 System.err.println("Client [" + client + "] error: " + t.getMessage());
             }
         }
-        
-        throw createPlaybackException(videoId, 
-                lastError != null ? lastError.getMessage() : "All streaming clients failed", 
+
+        throw createPlaybackException(videoId,
+                lastError != null ? lastError.getMessage() : "All streaming clients failed",
                 lastError);
     }
 
@@ -198,7 +212,12 @@ public class YtDlpStreamResolver {
 
     private static String resolveWithJavaDownloader(String videoId, File outputFile) throws Exception {
         System.out.println("Native Java download started for: " + videoId);
-        ClientType[] clients = {ClientType.ANDROID, ClientType.WEB};
+        ClientType[] clients = {
+            ClientType.TVHTML5_SIMPLY_EMBEDDED_PLAYER,
+            ClientType.IOS,
+            ClientType.ANDROID,
+            ClientType.WEB
+        };
         Throwable lastError = null;
 
         for (ClientType client : clients) {
