@@ -83,6 +83,62 @@ The standalone web app includes:
 - live lyrics
 - direct browser playback
 
+## Cloud Server Deployment
+
+The standalone web app can now be deployed to a real cloud server without relying on your laptop.
+
+Files included:
+
+- `Dockerfile`
+- `docker-compose.yml`
+- `deploy/nginx.conf`
+- `deploy/harmony-web.service`
+- `deploy/deploy-cloud.sh`
+
+### Fastest path on a fresh Ubuntu VPS
+
+```bash
+git clone https://github.com/sreedev-us/SMP.git
+cd SMP/untitled
+chmod +x deploy/deploy-cloud.sh
+./deploy/deploy-cloud.sh
+```
+
+This will:
+
+- install Docker and Nginx
+- clone or update the repo under `/opt/harmony-pro`
+- build the standalone web app container
+- start it on port `8090`
+- install an Nginx reverse proxy config
+
+### Manual container run
+
+```bash
+docker compose up -d --build
+```
+
+Then the app will be available on:
+
+- `http://your-server-ip:8090/`
+
+### Behind Nginx with your domain
+
+1. Edit `deploy/nginx.conf`
+2. Replace `your-domain.com` with your real domain
+3. Reload Nginx
+4. Add HTTPS with Certbot
+
+Example:
+
+```bash
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/harmony-web
+sudo ln -s /etc/nginx/sites-available/harmony-web /etc/nginx/sites-enabled/harmony-web
+sudo nginx -t
+sudo systemctl reload nginx
+sudo certbot --nginx -d your-domain.com
+```
+
 ## GitHub Actions
 
 If Android packaging is blocked locally on Windows, use the workflow in `.github/workflows/android.yml`.
