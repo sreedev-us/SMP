@@ -32,6 +32,7 @@ Required:
 - Android SDK with `ANDROID_HOME` or `ANDROID_SDK_ROOT`
 - GraalVM with `GRAALVM_HOME`
 - Gluon Substrate prerequisites installed
+- Android packages `platforms;android-36`, `build-tools;36.0.0`, `platform-tools`, `extras;android;m2repository`, and `extras;google;m2repository`
 
 Build an Android package:
 
@@ -40,6 +41,47 @@ Build an Android package:
 ```
 
 This produces an Android-native package using the same JavaFX codebase.
+
+## Web Access
+
+Harmony Pro also exposes a browser-based website while the app is hosting a sync session.
+
+1. Start the app normally on desktop or Android-hosted builds.
+2. Press `Start Sync` / `Host Session`.
+3. Open the shared local link on the same network, or the generated public tunnel link on any device.
+4. Use the website home page, then open `/player` for the live browser player.
+
+This keeps the current JavaFX configurations intact while adding a website entry point for phones, tablets, and laptops.
+
+## Standalone Web App
+
+There is now a separate standalone web application that does not depend on the desktop player being open.
+
+Start it with:
+
+```powershell
+./mvnw -DskipTests compile exec:java -Dexec.mainClass=com.musicplayer.StandaloneWebServer
+```
+
+Or use a custom port:
+
+```powershell
+./mvnw -DskipTests compile exec:java -Dexec.mainClass=com.musicplayer.StandaloneWebServer -Dexec.args="8090"
+```
+
+Then open:
+
+- `http://localhost:8090/`
+- `http://localhost:8090/player`
+
+The standalone web app includes:
+
+- browser search
+- queue management
+- play / pause / next / previous
+- related songs / auto radio
+- live lyrics
+- direct browser playback
 
 ## GitHub Actions
 

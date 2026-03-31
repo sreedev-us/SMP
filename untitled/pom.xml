@@ -175,6 +175,11 @@
                     <destination>${project.build.directory}/installer</destination>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+            </plugin>
         </plugins>
     </build>
 
@@ -216,8 +221,6 @@
                         <configuration>
                             <target>${gluonfx.target}</target>
                             <graalvmHome>${env.GRAALVM_HOME}</graalvmHome>
-                            <androidSdk>${env.ANDROID_SDK_ROOT}</androidSdk>
-                            <androidNdk>${env.ANDROID_NDK}</androidNdk>
                             <attachList>
                                 <list>browser</list>
                                 <list>display</list>

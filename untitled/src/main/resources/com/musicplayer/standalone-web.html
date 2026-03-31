@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#136f63">
+    <link rel="manifest" href="/manifest.json">
+    <title>Harmony Pro Standalone Web</title>
+    <style>
+        :root {
+            --bg-1: #051816;
+            --bg-2: #112d28;
+            --panel: rgba(12, 24, 21, 0.86);
+            --panel-soft: rgba(18, 39, 33, 0.94);
+            --line: rgba(255, 255, 255, 0.08);
+            --text: #f6fcf8;
+            --muted: #9fb8ae;
+            --accent: #7fe7bb;
+            --warm: #f6cb67;
+            --danger: #ff8d85;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text);
+            font-family: "Segoe UI", system-ui, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(127, 231, 187, 0.18), transparent 28%),
+                radial-gradient(circle at top right, rgba(246, 203, 103, 0.12), transparent 20%),
+                linear-gradient(145deg, var(--bg-1), var(--bg-2));
+        }
+        .shell {
+            width: min(1420px, calc(100% - 28px));
+            margin: 0 auto;
+            padding: 18px 0 24px;
+        }
+        .topbar {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .brand {
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+        .sub {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(310px, 370px) minmax(360px, 1.15fr) minmax(310px, 390px);
+            gap: 18px;
+        }
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-height: 0;
+        }
+        .panel {
+            border: 1px solid var(--line);
+            border-radius: 28px;
+            background: linear-gradient(180deg, var(--panel), var(--panel-soft));
+            box-shadow: 0 20px 60px var(--shadow);
+            backdrop-filter: blur(14px);
+        }
+        .section, .hero {
+            padding: 20px;
+        }
+        h2 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+        .eyebrow {
+            color: var(--accent);
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+        .title {
+            margin: 14px 0 6px;
+            font-size: clamp(2.1rem, 4vw, 3.4rem);
+            line-height: 0.96;
+        }
+        .artist, .hint, .status {
+            color: var(--muted);
+        }
+        .row, .button-row, .toggle-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        input[type="search"] {
+            width: 100%;
+            min-height: 46px;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            padding: 0 14px;
+            outline: none;
+        }
+        button {
+            border: none;
+            border-radius: 999px;
+            padding: 12px 18px;
+            font-weight: 700;
+            cursor: pointer;
+            color: #082119;
+            background: linear-gradient(135deg, var(--accent), var(--warm));
+        }
+        button.secondary {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--line);
+        }
+        button.danger {
+            color: #2c0907;
+            background: linear-gradient(135deg, #ffb4ab, var(--danger));
+        }
+        .chips {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .chip {
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            font-size: 0.84rem;
+            font-weight: 700;
+        }
+        .transport {
+            margin-top: 18px;
+            padding: 18px;
+            border-radius: 22px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .time-row {
+            display: flex;
+            justify-content: space-between;
+            color: var(--muted);
+            font-size: 0.86rem;
+            margin-bottom: 8px;
+        }
+        .progress-track {
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), var(--warm));
+        }
+        audio {
+            width: 100%;
+            margin-top: 12px;
+            accent-color: var(--accent);
+        }
+        .toggle-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 14px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 58vh;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .card {
+            padding: 14px;
+            border-radius: 18px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .song-title {
+            font-weight: 700;
+            line-height: 1.35;
+        }
+        .song-meta {
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+        .row-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        .row-actions button {
+            padding: 9px 14px;
+            font-size: 0.88rem;
+        }
+        .lyrics-scroll {
+            max-height: 64vh;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .lyric-line {
+            padding: 10px 14px;
+            border-radius: 16px;
+            color: rgba(246, 252, 248, 0.34);
+            font-size: 1.14rem;
+            font-weight: 700;
+            line-height: 1.5;
+            transition: 180ms ease;
+        }
+        .lyric-line.past { color: rgba(159, 184, 174, 0.76); }
+        .lyric-line.active {
+            color: var(--text);
+            background: linear-gradient(90deg, rgba(127, 231, 187, 0.18), rgba(246, 203, 103, 0.12));
+        }
+        .lyric-line.upcoming { color: rgba(246, 252, 248, 0.26); }
+        @media (max-width: 1180px) {
+            .layout { grid-template-columns: 1fr; }
+            .list, .lyrics-scroll { max-height: none; }
+        }
+    </style>
+</head>
+<body>
+<main class="shell">
+    <div class="topbar">
+        <div>
+            <div class="brand">Harmony Pro Standalone Web</div>
+            <div class="sub">Runs without the desktop app. Search, queue, autoplay, and browser playback all live here.</div>
+        </div>
+        <div class="status" id="statusText">Connecting...</div>
+    </div>
+
+    <section class="layout">
+        <div class="column">
+            <article class="panel section">
+                <h2>Search Music</h2>
+                <div class="row">
+                    <input type="search" id="searchInput" placeholder="Search songs, artists, or playlists">
+                    <button id="searchButton">Search</button>
+                </div>
+                <p class="hint">Play instantly or queue songs for later.</p>
+                <div class="list" id="searchResults">
+                    <div class="card status">Search results will appear here.</div>
+                </div>
+            </article>
+
+            <article class="panel section">
+                <h2>Queue</h2>
+                <div class="button-row">
+                    <button class="secondary" id="relatedButton">Add Related Songs</button>
+                    <button class="danger" id="clearQueueButton">Clear Queue</button>
+                </div>
+                <div class="list" id="queueList">
+                    <div class="card status">Queue is empty.</div>
+                </div>
+            </article>
+        </div>
+
+        <div class="column">
+            <article class="panel hero">
+                <div class="eyebrow">Standalone Player</div>
+                <div class="title" id="trackTitle">No song selected</div>
+                <div class="artist" id="trackArtist">Search for music to start listening.</div>
+                <div class="chips">
+                    <div class="chip" id="playbackChip">Idle</div>
+                    <div class="chip" id="lyricsChip">Lyrics waiting</div>
+                </div>
+
+                <div class="transport">
+                    <div class="button-row">
+                        <button class="secondary" id="prevButton">Previous</button>
+                        <button id="playPauseButton">Play / Pause</button>
+                        <button class="secondary" id="nextButton">Next</button>
+                    </div>
+                    <div class="toggle-row" style="margin-top:14px;">
+                        <label class="toggle-pill"><input type="checkbox" id="shuffleToggle"> Shuffle</label>
+                        <label class="toggle-pill"><input type="checkbox" id="repeatToggle"> Repeat</label>
+                        <label class="toggle-pill"><input type="checkbox" id="autoRadioToggle"> Auto Radio</label>
+                    </div>
+                    <div class="time-row" style="margin-top:16px;">
+                        <span id="currentTimeLabel">0:00</span>
+                        <span id="durationLabel">0:00</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+                    <audio id="audioPlayer" controls></audio>
+                    <button class="secondary" id="unlockButton" style="margin-top:12px; width:100%; display:none;">Tap to Enable Audio</button>
+                </div>
+            </article>
+        </div>
+
+        <div class="column">
+            <article class="panel section">
+                <h2>Live Lyrics</h2>
+                <div class="hint" id="lyricsSource">Waiting for a track...</div>
+                <div class="lyrics-scroll" id="lyricsScroll">
+                    <div class="lyric-line active">Lyrics will appear here when the current track provides them.</div>
+                </div>
+            </article>
+        </div>
+    </section>
+</main>
+
+<script>
+    const appState = {
+        lyrics: [],
+        activeLyricIndex: -1,
+        currentAudioUrl: "",
+        latestState: null
+    };
+
+    const els = {
+        statusText: document.getElementById('statusText'),
+        searchInput: document.getElementById('searchInput'),
+        searchButton: document.getElementById('searchButton'),
+        searchResults: document.getElementById('searchResults'),
+        queueList: document.getElementById('queueList'),
+        relatedButton: document.getElementById('relatedButton'),
+        clearQueueButton: document.getElementById('clearQueueButton'),
+        trackTitle: document.getElementById('trackTitle'),
+        trackArtist: document.getElementById('trackArtist'),
+        playbackChip: document.getElementById('playbackChip'),
+        lyricsChip: document.getElementById('lyricsChip'),
+        prevButton: document.getElementById('prevButton'),
+        playPauseButton: document.getElementById('playPauseButton'),
+        nextButton: document.getElementById('nextButton'),
+        shuffleToggle: document.getElementById('shuffleToggle'),
+        repeatToggle: document.getElementById('repeatToggle'),
+        autoRadioToggle: document.getElementById('autoRadioToggle'),
+        currentTimeLabel: document.getElementById('currentTimeLabel'),
+        durationLabel: document.getElementById('durationLabel'),
+        progressFill: document.getElementById('progressFill'),
+        audioPlayer: document.getElementById('audioPlayer'),
+        unlockButton: document.getElementById('unlockButton'),
+        lyricsSource: document.getElementById('lyricsSource'),
+        lyricsScroll: document.getElementById('lyricsScroll')
+    };
+
+    function formatTime(seconds) {
+        const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+        const mins = Math.floor(safe / 60);
+        const secs = safe % 60;
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    async function fetchJson(url, options = {}) {
+        const response = await fetch(url, options);
+        return response.json();
+    }
+
+    function renderSearchResults(results) {
+        if (!results || !results.length) {
+            els.searchResults.innerHTML = '<div class="card status">No results found.</div>';
+            return;
+        }
+
+        els.searchResults.innerHTML = results.map(item => `
+            <div class="card">
+                <div class="song-title">${escapeHtml(item.title || 'Untitled')}</div>
+                <div class="song-meta">${escapeHtml(item.channel || 'Unknown Artist')}</div>
+                <div class="row-actions">
+                    <button onclick="queueSong('${escapeHtml(item.videoId)}', true)">Play Now</button>
+                    <button class="secondary" onclick="queueSong('${escapeHtml(item.videoId)}', false)">Add to Queue</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderQueue(queue) {
+        if (!queue || !queue.length) {
+            els.queueList.innerHTML = '<div class="card status">Queue is empty.</div>';
+            return;
+        }
+
+        els.queueList.innerHTML = queue.map(item => `
+            <div class="card">
+                <div class="song-title">${escapeHtml(item.title || 'Untitled')}</div>
+                <div class="song-meta">${escapeHtml(item.channel || 'Unknown Artist')}${item.current ? ' • Playing now' : ''}</div>
+                <div class="row-actions">
+                    <button onclick="playQueueIndex(${item.index})">${item.current ? 'Restart' : 'Play'}</button>
+                    <button class="secondary" onclick="removeQueueIndex(${item.index})">Remove</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderState(state) {
+        if (!state || state.ok === false) {
+            return;
+        }
+        appState.latestState = state;
+
+        const current = state.currentSong || {};
+        els.trackTitle.textContent = current.title || 'No song selected';
+        els.trackArtist.textContent = current.channel || 'Search for music to start listening.';
+        els.statusText.textContent = state.status || 'Ready';
+        els.playbackChip.textContent = state.isPlaying ? 'Playing' : (state.isPaused ? 'Paused' : 'Idle');
+        els.shuffleToggle.checked = !!state.shuffleEnabled;
+        els.repeatToggle.checked = !!state.repeatEnabled;
+        els.autoRadioToggle.checked = !!state.autoRadioEnabled;
+
+        const nextAudioUrl = state.audioUrl || '';
+        if (nextAudioUrl && appState.currentAudioUrl !== nextAudioUrl) {
+            appState.currentAudioUrl = nextAudioUrl;
+            els.audioPlayer.src = nextAudioUrl;
+            els.audioPlayer.load();
+            els.audioPlayer.onloadedmetadata = () => {
+                els.audioPlayer.currentTime = Math.max(0, (state.currentTimeMs || 0) / 1000);
+                els.audioPlayer.onloadedmetadata = null;
+                if (state.isPlaying) {
+                    attemptPlayback();
+                }
+            };
+        } else if (state.isPlaying && els.audioPlayer.paused && nextAudioUrl) {
+            attemptPlayback();
+        } else if (state.isPaused && !els.audioPlayer.paused) {
+            els.audioPlayer.pause();
+        }
+
+        renderQueue(state.queue || []);
+    }
+
+    function renderLyrics(payload) {
+        const lines = Array.isArray(payload.lines) ? payload.lines : [];
+        appState.lyrics = lines;
+        appState.activeLyricIndex = -1;
+        els.lyricsSource.textContent = payload.source
+            ? `${payload.synced ? 'Synced' : 'Static'} lyrics • ${payload.source}`
+            : 'Waiting for a track...';
+        els.lyricsChip.textContent = lines.length ? 'Lyrics ready' : 'Lyrics waiting';
+
+        if (!lines.length) {
+            els.lyricsScroll.innerHTML = '<div class="lyric-line active">Lyrics will appear here when the current track provides them.</div>';
+            return;
+        }
+
+        els.lyricsScroll.innerHTML = lines.map(line => `<div class="lyric-line upcoming">${escapeHtml(line.text || '')}</div>`).join('');
+        syncLyricsTo(els.audioPlayer.currentTime * 1000);
+    }
+
+    function syncLyricsTo(currentMs) {
+        if (!appState.lyrics.length) return;
+        let nextIndex = -1;
+        for (let i = 0; i < appState.lyrics.length; i++) {
+            if (appState.lyrics[i].timeMs <= currentMs) nextIndex = i;
+            else break;
+        }
+        if (nextIndex === appState.activeLyricIndex) return;
+        appState.activeLyricIndex = nextIndex;
+
+        const nodes = els.lyricsScroll.querySelectorAll('.lyric-line');
+        nodes.forEach((node, index) => {
+            node.classList.remove('past', 'active', 'upcoming');
+            if (appState.activeLyricIndex >= 0 && index < appState.activeLyricIndex) node.classList.add('past');
+            else if (index === appState.activeLyricIndex) node.classList.add('active');
+            else node.classList.add('upcoming');
+        });
+
+        if (appState.activeLyricIndex >= 0 && nodes[appState.activeLyricIndex]) {
+            nodes[appState.activeLyricIndex].scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+    }
+
+    async function loadState() {
+        const state = await fetchJson('/api/state?t=' + Date.now());
+        renderState(state);
+    }
+
+    async function loadLyrics() {
+        const payload = await fetchJson('/api/lyrics?t=' + Date.now());
+        renderLyrics(payload);
+    }
+
+    async function performSearch() {
+        const query = els.searchInput.value.trim();
+        if (!query) return;
+        els.statusText.textContent = `Searching for "${query}"...`;
+        const payload = await fetchJson('/api/search?q=' + encodeURIComponent(query));
+        if (!payload.ok) {
+            els.statusText.textContent = payload.message || 'Search failed.';
+            renderSearchResults([]);
+            return;
+        }
+        els.statusText.textContent = payload.message || 'Search complete.';
+        renderSearchResults(payload.results || []);
+    }
+
+    async function queueSong(videoId, playNow) {
+        const payload = await fetchJson(`/api/queue/add?videoId=${encodeURIComponent(videoId)}&play=${playNow ? '1' : '0'}`, { method: 'POST' });
+        els.statusText.textContent = payload.message || 'Queue updated.';
+        if (payload.state) renderState(payload.state);
+        await loadLyrics();
+    }
+
+    async function playQueueIndex(index) {
+        const payload = await fetchJson(`/api/queue/play?index=${index}`, { method: 'POST' });
+        els.statusText.textContent = payload.message || 'Playback updated.';
+        if (payload.state) renderState(payload.state);
+        await loadLyrics();
+    }
+
+    async function removeQueueIndex(index) {
+        const payload = await fetchJson(`/api/queue/remove?index=${index}`, { method: 'POST' });
+        els.statusText.textContent = payload.message || 'Queue updated.';
+        if (payload.state) renderState(payload.state);
+    }
+
+    async function clearQueue() {
+        const payload = await fetchJson('/api/queue/clear', { method: 'POST' });
+        els.statusText.textContent = payload.message || 'Queue cleared.';
+        if (payload.state) renderState(payload.state);
+        await loadLyrics();
+    }
+
+    async function setToggle(name, enabled) {
+        const payload = await fetchJson(`/api/toggle?name=${encodeURIComponent(name)}&enabled=${enabled ? '1' : '0'}`, { method: 'POST' });
+        els.statusText.textContent = payload.message || 'Toggle updated.';
+        if (payload.state) renderState(payload.state);
+    }
+
+    async function sendPlayback(url) {
+        const payload = await fetchJson(url, { method: 'POST' });
+        els.statusText.textContent = payload.message || 'Playback updated.';
+        if (payload.state) renderState(payload.state);
+        await loadLyrics();
+    }
+
+    async function addRelated() {
+        const payload = await fetchJson('/api/related', { method: 'POST' });
+        els.statusText.textContent = payload.message || 'Finding related songs...';
+        if (payload.state) renderState(payload.state);
+        setTimeout(loadState, 1200);
+    }
+
+    function attemptPlayback() {
+        els.audioPlayer.play().then(() => {
+            els.unlockButton.style.display = 'none';
+        }).catch(() => {
+            els.unlockButton.style.display = 'block';
+            els.statusText.textContent = 'Tap "Enable Audio" to start playback in this browser.';
+        });
+    }
+
+    function connectEvents() {
+        const source = new EventSource('/events');
+        source.onmessage = async () => {
+            await loadState();
+            await loadLyrics();
+        };
+        source.onerror = () => {
+            els.statusText.textContent = 'Realtime connection dropped. Reconnecting...';
+        };
+    }
+
+    els.audioPlayer.addEventListener('timeupdate', () => {
+        const current = els.audioPlayer.currentTime || 0;
+        const total = Number.isFinite(els.audioPlayer.duration) ? els.audioPlayer.duration : 0;
+        els.currentTimeLabel.textContent = formatTime(current);
+        els.durationLabel.textContent = formatTime(total);
+        els.progressFill.style.width = total > 0 ? `${(current / total) * 100}%` : '0%';
+        syncLyricsTo(current * 1000);
+    });
+
+    els.audioPlayer.addEventListener('ended', () => {
+        sendPlayback(`/api/next?positionMs=${Math.max(0, Math.floor(els.audioPlayer.currentTime * 1000))}`);
+    });
+
+    els.unlockButton.addEventListener('click', attemptPlayback);
+    els.searchButton.addEventListener('click', performSearch);
+    els.searchInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') performSearch();
+    });
+    els.clearQueueButton.addEventListener('click', clearQueue);
+    els.relatedButton.addEventListener('click', addRelated);
+    els.prevButton.addEventListener('click', () => sendPlayback(`/api/prev?positionMs=${Math.max(0, Math.floor(els.audioPlayer.currentTime * 1000))}`));
+    els.playPauseButton.addEventListener('click', () => sendPlayback(`/api/playpause?positionMs=${Math.max(0, Math.floor(els.audioPlayer.currentTime * 1000))}`));
+    els.nextButton.addEventListener('click', () => sendPlayback(`/api/next?positionMs=${Math.max(0, Math.floor(els.audioPlayer.currentTime * 1000))}`));
+    els.shuffleToggle.addEventListener('change', event => setToggle('shuffle', event.target.checked));
+    els.repeatToggle.addEventListener('change', event => setToggle('repeat', event.target.checked));
+    els.autoRadioToggle.addEventListener('change', event => setToggle('autoradio', event.target.checked));
+
+    loadState();
+    loadLyrics();
+    connectEvents();
+    setInterval(loadState, 5000);
+
+    window.queueSong = queueSong;
+    window.playQueueIndex = playQueueIndex;
+    window.removeQueueIndex = removeQueueIndex;
+</script>
+</body>
+</html>

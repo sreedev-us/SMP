@@ -54,6 +54,7 @@ public class LanSyncManager {
     private final List<PrintWriter> sseClients = new CopyOnWriteArrayList<>();
     private String currentAudioPath;
     private String localIp;
+    private WebAppBridge webAppBridge;
     
     // State Tracking for Late Joiners
     private String lastPlayVideoId;
@@ -77,7 +78,18 @@ public class LanSyncManager {
         this.listener = listener;
     }
 
+    public void setWebAppBridge(WebAppBridge webAppBridge) {
+        this.webAppBridge = webAppBridge;
+    }
+
     public Mode getMode() { return mode; }
+
+    public String getLocalWebUrl() {
+        if (localIp == null || localIp.isBlank()) {
+            return null;
+        }
+        return "http://" + localIp + ":" + HTTP_PORT + "/";
+    }
 
     /**
      * Start hosting a session. Returns the local IP for display.
@@ -92,18 +104,27 @@ public class LanSyncManager {
         try {
             // 1. HTTP audio server + Web Player
             httpServer = HttpServer.create(new InetSocketAddress(HTTP_PORT), 0);
-            httpServer.createContext("/", this::handleWebPlayerRequest);
+            httpServer.createContext("/", this::handleWebsiteRequest);
+            httpServer.createContext("/player", this::handleWebPlayerRequest);
             httpServer.createContext("/audio", this::handleAudioRequest);
             httpServer.createContext("/events", this::handleSseEvents);
             httpServer.createContext("/control", this::handleControlRequest);
             httpServer.createContext("/lyrics", this::handleLyricsRequest);
+            httpServer.createContext("/api/state", this::handleWebStateRequest);
+            httpServer.createContext("/api/search", this::handleWebSearchRequest);
+            httpServer.createContext("/api/queue/add", this::handleWebQueueAddRequest);
+            httpServer.createContext("/api/queue/play", this::handleWebQueuePlayRequest);
+            httpServer.createContext("/api/queue/remove", this::handleWebQueueRemoveRequest);
+            httpServer.createContext("/api/queue/clear", this::handleWebQueueClearRequest);
+            httpServer.createContext("/api/toggle", this::handleWebToggleRequest);
+            httpServer.createContext("/api/related", this::handleWebRelatedRequest);
             httpServer.createContext("/manifest.json", ex -> serveResource(ex, "/com/musicplayer/manifest.json", "application/json"));
             httpServer.createContext("/sw.js", ex -> serveResource(ex, "/com/musicplayer/sw.js", "application/javascript"));
             httpServer.createContext("/app-icon.png", ex -> serveResource(ex, "/com/musicplayer/app-icon.png", "image/png"));
             httpServer.setExecutor(Executors.newCachedThreadPool());
             httpServer.start();
             System.out.println("[LAN] Web Player Server successfully started on port " + HTTP_PORT);
-            System.out.println("[LAN] Share this link with your friends: http://" + localIp + ":" + HTTP_PORT);
+            System.out.println("[LAN] Share this website with your friends: http://" + localIp + ":" + HTTP_PORT);
         } catch (Exception e) {
             System.err.println("[LAN] CRITICAL: FAILED to start HTTP Server on port " + HTTP_PORT + ": " + e.getMessage());
             throw e;
@@ -271,6 +292,10 @@ public class LanSyncManager {
     public void updateWebLyrics(LyricsData lyricsData) {
         currentLyricsData = lyricsData;
         broadcastSseOnly("LYRICS");
+    }
+
+    public void notifyWebStateChanged() {
+        broadcastSseOnly("STATE");
     }
 
     public void clearWebTrackInfo() {
@@ -508,6 +533,59 @@ public class LanSyncManager {
         exchange.close();
     }
 
+    private void handleWebStateRequest(HttpExchange exchange) throws IOException {
+        writeJson(exchange, webAppBridge != null ? webAppBridge.getState() : errorJson("Web app bridge unavailable"));
+    }
+
+    private void handleWebSearchRequest(HttpExchange exchange) throws IOException {
+        if (webAppBridge == null) {
+            writeJson(exchange, errorJson("Web app bridge unavailable"));
+            return;
+        }
+        try {
+            String query = queryParam(exchange, "q");
+            writeJson(exchange, webAppBridge.search(query));
+        } catch (Exception e) {
+            writeJson(exchange, errorJson("Search failed: " + e.getMessage()));
+        }
+    }
+
+    private void handleWebQueueAddRequest(HttpExchange exchange) throws IOException {
+        if (webAppBridge == null) {
+            writeJson(exchange, errorJson("Web app bridge unavailable"));
+            return;
+        }
+        String videoId = queryParam(exchange, "videoId");
+        boolean playNow = "1".equals(queryParam(exchange, "play")) || "true".equalsIgnoreCase(queryParam(exchange, "play"));
+        writeJson(exchange, webAppBridge.addToQueue(videoId, playNow));
+    }
+
+    private void handleWebQueuePlayRequest(HttpExchange exchange) throws IOException {
+        writeJson(exchange, handleIndexAction(exchange, "play"));
+    }
+
+    private void handleWebQueueRemoveRequest(HttpExchange exchange) throws IOException {
+        writeJson(exchange, handleIndexAction(exchange, "remove"));
+    }
+
+    private void handleWebQueueClearRequest(HttpExchange exchange) throws IOException {
+        writeJson(exchange, webAppBridge != null ? webAppBridge.clearQueue() : errorJson("Web app bridge unavailable"));
+    }
+
+    private void handleWebToggleRequest(HttpExchange exchange) throws IOException {
+        if (webAppBridge == null) {
+            writeJson(exchange, errorJson("Web app bridge unavailable"));
+            return;
+        }
+        String toggle = queryParam(exchange, "name");
+        boolean enabled = "1".equals(queryParam(exchange, "enabled")) || "true".equalsIgnoreCase(queryParam(exchange, "enabled"));
+        writeJson(exchange, webAppBridge.setToggle(toggle, enabled));
+    }
+
+    private void handleWebRelatedRequest(HttpExchange exchange) throws IOException {
+        writeJson(exchange, webAppBridge != null ? webAppBridge.addRelated() : errorJson("Web app bridge unavailable"));
+    }
+
     private void handleLyricsRequest(HttpExchange exchange) throws IOException {
         JSONObject payload = new JSONObject();
         payload.put("title", currentTrackTitle == null ? "" : currentTrackTitle);
@@ -535,13 +613,26 @@ public class LanSyncManager {
         }
     }
 
-    private void handleWebPlayerRequest(HttpExchange exchange) throws IOException {
+    private void handleWebsiteRequest(HttpExchange exchange) throws IOException {
         if (!exchange.getRequestURI().getPath().equals("/")) {
             exchange.sendResponseHeaders(404, 0);
             exchange.close();
             return;
         }
-        InputStream htmlStream = getClass().getResourceAsStream("/com/musicplayer/web-player.html");
+        serveHtmlResource(exchange, "/com/musicplayer/website-home.html");
+    }
+
+    private void handleWebPlayerRequest(HttpExchange exchange) throws IOException {
+        if (!exchange.getRequestURI().getPath().equals("/player")) {
+            exchange.sendResponseHeaders(404, 0);
+            exchange.close();
+            return;
+        }
+        serveHtmlResource(exchange, "/com/musicplayer/web-player.html");
+    }
+
+    private void serveHtmlResource(HttpExchange exchange, String resourcePath) throws IOException {
+        InputStream htmlStream = getClass().getResourceAsStream(resourcePath);
         if (htmlStream == null) {
             exchange.sendResponseHeaders(500, 0);
             exchange.close();
@@ -576,6 +667,53 @@ public class LanSyncManager {
             }
         } catch (Exception e) {
             System.err.println("[LAN] UDP broadcast error: " + e.getMessage());
+        }
+    }
+
+    private JSONObject handleIndexAction(HttpExchange exchange, String action) {
+        if (webAppBridge == null) {
+            return errorJson("Web app bridge unavailable");
+        }
+        try {
+            int index = Integer.parseInt(queryParam(exchange, "index"));
+            return switch (action) {
+                case "play" -> webAppBridge.playQueueIndex(index);
+                case "remove" -> webAppBridge.removeQueueIndex(index);
+                default -> errorJson("Unsupported queue action");
+            };
+        } catch (Exception e) {
+            return errorJson("Invalid queue index");
+        }
+    }
+
+    private String queryParam(HttpExchange exchange, String key) {
+        String raw = exchange.getRequestURI().getRawQuery();
+        if (raw == null || raw.isBlank()) {
+            return "";
+        }
+        for (String pair : raw.split("&")) {
+            String[] parts = pair.split("=", 2);
+            if (parts.length > 0 && URLDecoder.decode(parts[0], StandardCharsets.UTF_8).equals(key)) {
+                return parts.length > 1 ? URLDecoder.decode(parts[1], StandardCharsets.UTF_8) : "";
+            }
+        }
+        return "";
+    }
+
+    private JSONObject errorJson(String message) {
+        JSONObject json = new JSONObject();
+        json.put("ok", false);
+        json.put("message", message == null ? "Unknown error" : message);
+        return json;
+    }
+
+    private void writeJson(HttpExchange exchange, JSONObject payload) throws IOException {
+        byte[] bytes = payload.toString().getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "application/json");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+        exchange.sendResponseHeaders(200, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
         }
     }
 

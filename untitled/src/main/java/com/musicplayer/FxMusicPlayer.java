@@ -1,6 +1,7 @@
 package com.musicplayer;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -27,9 +28,14 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
+import java.util.Locale;
 import java.util.function.Consumer;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import javafx.scene.control.TextInputDialog;
 
 public class FxMusicPlayer {
@@ -119,6 +125,8 @@ public class FxMusicPlayer {
     private long lyricsRequestSequence = 0;
     private final List<String> searchHistory = new ArrayList<>();
     private static final int MAX_SEARCH_HISTORY = 8;
+    private final Map<String, SongData> webSearchIndex = new ConcurrentHashMap<>();
+    private volatile String lastStatusMessage = "App Ready - Select a track";
 
     public FxMusicPlayer(AuthSystem auth, SettingsManager settings) {
         this.auth = auth;
@@ -195,6 +203,48 @@ public class FxMusicPlayer {
                         case "prev": handlePrevious(); break;
                     }
                 });
+            }
+        });
+
+        lanSync.setWebAppBridge(new WebAppBridge() {
+            @Override
+            public JSONObject getState() {
+                return buildWebStateSnapshot();
+            }
+
+            @Override
+            public JSONObject search(String query) throws Exception {
+                return searchSongsForWeb(query);
+            }
+
+            @Override
+            public JSONObject addToQueue(String videoId, boolean playNow) {
+                return addSongToQueueFromWeb(videoId, playNow);
+            }
+
+            @Override
+            public JSONObject playQueueIndex(int index) {
+                return playQueueIndexFromWeb(index);
+            }
+
+            @Override
+            public JSONObject removeQueueIndex(int index) {
+                return removeQueueIndexFromWeb(index);
+            }
+
+            @Override
+            public JSONObject clearQueue() {
+                return clearQueueFromWeb();
+            }
+
+            @Override
+            public JSONObject setToggle(String toggle, boolean enabled) {
+                return setToggleFromWeb(toggle, enabled);
+            }
+
+            @Override
+            public JSONObject addRelated() {
+                return addRelatedSongsFromWeb();
             }
         });
     }
@@ -687,10 +737,12 @@ public class FxMusicPlayer {
      * Called when user single-clicks a search result.
      */
     private void addToQueueAndPlay(SongData song) {
-        if (!playlist.contains(song)) {
+        int existingIndex = indexOfSongInPlaylist(song);
+        if (existingIndex == -1) {
             playlist.add(song);
+            existingIndex = playlist.size() - 1;
         }
-        currentSongIndex = playlist.indexOf(song);
+        currentSongIndex = existingIndex;
         isPaused = false;
         isPlaying = false;
         audioPlayer.stop();
@@ -703,6 +755,7 @@ public class FxMusicPlayer {
         if (autoRadioEnabled) {
             autoFetchMoreSongs(song, false);
         }
+        lanSync.notifyWebStateChanged();
     }
 
     private void handlePlaybackFailure(SongData song, Exception error) {
@@ -795,34 +848,52 @@ public class FxMusicPlayer {
      */
     private void autoFetchMoreSongs(SongData baseSong, boolean playNext) {
         if (youtubeService == null || baseSong == null) return;
-        
-        String query = baseSong.getTitle().replaceAll("\\(.*?\\)|\\[.*?\\]", "").trim()
-                + " " + baseSong.getChannel();
 
-                updateStatus("Radio: finding songs like \"" + baseSong.getTitle() + "\"...");
+        List<String> queries = buildAutoRadioQueries(baseSong);
+        updateStatus("Radio: finding songs like \"" + baseSong.getTitle() + "\"...");
 
         new Thread(() -> {
             try {
-                List<YouTubeVideo> videos = youtubeService.searchVideos(query, 8);
-                Platform.runLater(() -> {
-                    int added = 0;
+                List<SongData> songsToAdd = new ArrayList<>();
+                for (String query : queries) {
+                    if (songsToAdd.size() >= 5) {
+                        break;
+                    }
+
+                    List<YouTubeVideo> videos;
+                    try {
+                        videos = youtubeService.searchVideos(query, 8);
+                    } catch (Exception searchError) {
+                        System.err.println("Auto-radio search failed for query '" + query + "': " + searchError.getMessage());
+                        continue;
+                    }
+
                     for (YouTubeVideo v : videos) {
-                        boolean duplicate = playlist.stream()
-                                .anyMatch(s -> v.getId().equals(s.getVideoId()));
-                        if (!duplicate) {
-                            SongData s = new SongData();
-                            s.setVideoId(v.getId());
-                            s.setTitle(v.getTitle());
-                            s.setChannel(v.getChannel());
-                            s.setThumbnailUrl(v.getThumbnailUrl());
-                            s.setType("youtube");
-                            s.setLyricsSearchHint(query);
-                            playlist.add(s);
-                            added++;
+                        if (!isRelatedAutoRadioCandidate(baseSong, songsToAdd, v)) {
+                            continue;
+                        }
+
+                        SongData s = new SongData();
+                        s.setVideoId(v.getId());
+                        s.setTitle(v.getTitle());
+                        s.setChannel(v.getChannel());
+                        s.setThumbnailUrl(v.getThumbnailUrl());
+                        s.setType("youtube");
+                        s.setLyricsSearchHint(query);
+                        songsToAdd.add(s);
+
+                        if (songsToAdd.size() >= 5) {
+                            break;
                         }
                     }
+                }
+
+                Platform.runLater(() -> {
+                    int added = songsToAdd.size();
+                    playlist.addAll(songsToAdd);
                     if (added > 0) {
                                                 updateStatus("Radio added " + added + " songs - keep listening!");
+                        lanSync.notifyWebStateChanged();
                         if (playNext) {
                             currentSongIndex++;
                             isPaused = false;
@@ -838,6 +909,88 @@ public class FxMusicPlayer {
                 System.err.println("Auto-radio fetch failed: " + e.getMessage());
             }
         }, "auto-radio").start();
+    }
+
+    private List<String> buildAutoRadioQueries(SongData baseSong) {
+        List<String> queries = new ArrayList<>();
+        String title = cleanSongTitle(baseSong.getTitle());
+        String channel = normalizeWhitespace(baseSong.getChannel());
+
+        addIfPresent(queries, title + " " + channel + " similar songs");
+        addIfPresent(queries, channel + " songs");
+        addIfPresent(queries, channel + " music");
+        addIfPresent(queries, title + " vibe playlist");
+        addIfPresent(queries, title + " " + channel);
+        return queries;
+    }
+
+    private boolean isRelatedAutoRadioCandidate(SongData baseSong, List<SongData> pendingSongs, YouTubeVideo candidate) {
+        if (candidate == null || candidate.getId() == null || candidate.getId().isBlank()) {
+            return false;
+        }
+
+        String candidateId = candidate.getId().trim();
+        String baseId = safeText(baseSong.getVideoId());
+        if (!baseId.isBlank() && baseId.equals(candidateId)) {
+            return false;
+        }
+
+        boolean duplicate = playlist.stream()
+                .anyMatch(existing -> candidateId.equals(safeText(existing.getVideoId())));
+        if (duplicate) {
+            return false;
+        }
+
+        boolean pendingDuplicate = pendingSongs.stream()
+                .anyMatch(existing -> candidateId.equals(safeText(existing.getVideoId())));
+        if (pendingDuplicate) {
+            return false;
+        }
+
+        String baseTitle = normalizeSongSignature(baseSong.getTitle());
+        String candidateTitle = normalizeSongSignature(candidate.getTitle());
+        if (!baseTitle.isBlank() && baseTitle.equals(candidateTitle)) {
+            return false;
+        }
+
+        if (!baseTitle.isBlank() && !candidateTitle.isBlank()
+                && (candidateTitle.contains(baseTitle) || baseTitle.contains(candidateTitle))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private void addIfPresent(List<String> queries, String value) {
+        String normalized = normalizeWhitespace(value);
+        if (!normalized.isBlank() && !queries.contains(normalized)) {
+            queries.add(normalized);
+        }
+    }
+
+    private String cleanSongTitle(String title) {
+        String cleaned = safeText(title)
+                .replaceAll("\\(.*?\\)|\\[.*?\\]", " ")
+                .replaceAll("(?i)\\b(feat|ft|featuring|official|lyrics|lyric video|video|audio|hd|4k|remaster(ed)?)\\b", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return cleaned.isBlank() ? safeText(title).trim() : cleaned;
+    }
+
+    private String normalizeSongSignature(String title) {
+        return cleanSongTitle(title)
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9\\s]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private String normalizeWhitespace(String value) {
+        return safeText(value).replaceAll("\\s+", " ").trim();
+    }
+
+    private String safeText(String value) {
+        return value == null ? "" : value;
     }
     
     /** Triggered by handleNext() when queue is exhausted. */
@@ -984,22 +1137,23 @@ public class FxMusicPlayer {
             new Thread(() -> {
                 try {
                     String ip = lanSync.startHosting();
+                    String localWebUrl = lanSync.getLocalWebUrl();
                     Platform.runLater(() -> {
                         updateToggleButtonStyle(hostButton, true);
                         updateToggleButtonStyle(joinButton, false);
                         updateToggleButtonStyle(mobileSettingsHostButton, true);
                         updateToggleButtonStyle(mobileSettingsJoinButton, false);
                         updateSessionButtonLabels();
-                                                updateStatus("Hosting on " + ip + " | Starting public tunnel...");
+                                                updateStatus("Website live on " + ip + " | Starting public tunnel...");
                         updatePeerLabel(0);
-                        updatePublicLinkFields("", "Generating tunnel link...", true);
+                        updatePublicLinkFields(localWebUrl, "Local website ready", true);
                     });
                     
                     // Automatically launch the public tunnel so users don't have to use CMD
                     lanSync.startPublicTunnel(url -> {
                         Platform.runLater(() -> {
                             if (url.startsWith("http")) {
-                                updateStatus("Public link ready. Share it with friends.");
+                                updateStatus("Public website link ready. Share it with friends.");
                                 updatePublicLinkFields(url, "Public link ready", true);
                             } else {
                                 updateStatus(url);
@@ -1231,8 +1385,337 @@ public class FxMusicPlayer {
     //  Utility 
 
     public void updateStatus(String msg) {
+        lastStatusMessage = msg == null ? "" : msg;
         if (statusLabel != null) statusLabel.setText(msg);
         if (mobileSettingsStatusLabel != null) mobileSettingsStatusLabel.setText(msg);
+    }
+
+    private int indexOfSongInPlaylist(SongData target) {
+        if (target == null) {
+            return -1;
+        }
+        for (int i = 0; i < playlist.size(); i++) {
+            SongData existing = playlist.get(i);
+            if (isSameSong(existing, target)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean isSameSong(SongData a, SongData b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        String aVideo = safeText(a.getVideoId()).trim();
+        String bVideo = safeText(b.getVideoId()).trim();
+        if (!aVideo.isBlank() && !bVideo.isBlank()) {
+            return aVideo.equals(bVideo);
+        }
+        String aPath = safeText(a.getPath()).trim();
+        String bPath = safeText(b.getPath()).trim();
+        return !aPath.isBlank() && !bPath.isBlank() && aPath.equalsIgnoreCase(bPath);
+    }
+
+    private SongData cloneSong(SongData original) {
+        SongData copy = new SongData();
+        copy.setVideoId(original.getVideoId());
+        copy.setTitle(original.getTitle());
+        copy.setChannel(original.getChannel());
+        copy.setThumbnailUrl(original.getThumbnailUrl());
+        copy.setPath(original.getPath());
+        copy.setType(original.getType());
+        copy.setLyricsSearchHint(original.getLyricsSearchHint());
+        copy.setDuration(original.getDuration());
+        copy.setGuestPlaybackBlocked(original.isGuestPlaybackBlocked());
+        copy.setPlaybackIssue(original.getPlaybackIssue());
+        return copy;
+    }
+
+    private JSONObject okJson(String message) {
+        JSONObject json = new JSONObject();
+        json.put("ok", true);
+        json.put("message", message == null ? "" : message);
+        return json;
+    }
+
+    private JSONObject errorJson(String message) {
+        JSONObject json = new JSONObject();
+        json.put("ok", false);
+        json.put("message", message == null ? "Unknown error" : message);
+        return json;
+    }
+
+    private JSONObject buildWebStateSnapshot() {
+        AtomicReference<JSONObject> ref = new AtomicReference<>(new JSONObject());
+        CountDownLatch latch = new CountDownLatch(1);
+        Platform.runLater(() -> {
+            try {
+                JSONObject state = new JSONObject();
+                state.put("ok", true);
+                state.put("status", lastStatusMessage);
+                state.put("isPlaying", isPlaying);
+                state.put("isPaused", isPaused);
+                state.put("shuffleEnabled", shuffleEnabled);
+                state.put("repeatEnabled", repeatEnabled);
+                state.put("autoRadioEnabled", autoRadioEnabled);
+                state.put("currentSongIndex", currentSongIndex);
+                state.put("currentTimeMs", audioPlayer.getCurrentPosition());
+                state.put("durationMs", audioPlayer.getDuration());
+
+                JSONArray queue = new JSONArray();
+                for (int i = 0; i < playlist.size(); i++) {
+                    SongData song = playlist.get(i);
+                    JSONObject item = new JSONObject();
+                    item.put("index", i);
+                    item.put("videoId", safeText(song.getVideoId()));
+                    item.put("title", safeText(song.getTitle()));
+                    item.put("channel", safeText(song.getChannel()));
+                    item.put("thumbnailUrl", safeText(song.getThumbnailUrl()));
+                    item.put("type", safeText(song.getType()));
+                    item.put("current", i == currentSongIndex);
+                    queue.put(item);
+                }
+                state.put("queue", queue);
+
+                SongData current = (currentSongIndex >= 0 && currentSongIndex < playlist.size()) ? playlist.get(currentSongIndex) : null;
+                if (current != null) {
+                    JSONObject currentJson = new JSONObject();
+                    currentJson.put("videoId", safeText(current.getVideoId()));
+                    currentJson.put("title", safeText(current.getTitle()));
+                    currentJson.put("channel", safeText(current.getChannel()));
+                    currentJson.put("thumbnailUrl", safeText(current.getThumbnailUrl()));
+                    currentJson.put("type", safeText(current.getType()));
+                    state.put("currentSong", currentJson);
+                } else {
+                    state.put("currentSong", JSONObject.NULL);
+                }
+                ref.set(state);
+            } finally {
+                latch.countDown();
+            }
+        });
+        awaitLatch(latch);
+        return ref.get();
+    }
+
+    private JSONObject searchSongsForWeb(String query) throws Exception {
+        if (youtubeService == null) {
+            return errorJson("YouTube service not connected.");
+        }
+        String normalizedQuery = normalizeWhitespace(query);
+        if (normalizedQuery.isBlank()) {
+            return errorJson("Search query is empty.");
+        }
+
+        List<YouTubeVideo> videos = youtubeService.searchVideos(normalizedQuery, 15);
+        JSONArray results = new JSONArray();
+        for (YouTubeVideo v : videos) {
+            SongData song = new SongData();
+            song.setVideoId(v.getId());
+            song.setTitle(v.getTitle());
+            song.setChannel(v.getChannel());
+            song.setThumbnailUrl(v.getThumbnailUrl());
+            song.setType("youtube");
+            song.setLyricsSearchHint(normalizedQuery);
+            webSearchIndex.put(v.getId(), song);
+
+            JSONObject item = new JSONObject();
+            item.put("videoId", safeText(song.getVideoId()));
+            item.put("title", safeText(song.getTitle()));
+            item.put("channel", safeText(song.getChannel()));
+            item.put("thumbnailUrl", safeText(song.getThumbnailUrl()));
+            results.put(item);
+        }
+
+        Platform.runLater(() -> rememberSearchQuery(normalizedQuery));
+
+        JSONObject payload = okJson("Found " + results.length() + " results.");
+        payload.put("results", results);
+        return payload;
+    }
+
+    private JSONObject addSongToQueueFromWeb(String videoId, boolean playNow) {
+        SongData cachedSong = webSearchIndex.get(videoId);
+        if (cachedSong == null) {
+            return errorJson("Song was not found in the latest search results.");
+        }
+
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<JSONObject> ref = new AtomicReference<>(errorJson("Queue update failed."));
+        Platform.runLater(() -> {
+            try {
+                SongData song = cloneSong(cachedSong);
+                if (playNow) {
+                    addToQueueAndPlay(song);
+                    ref.set(okJson("Playing " + safeText(song.getTitle())));
+                } else {
+                    int existingIndex = indexOfSongInPlaylist(song);
+                    if (existingIndex == -1) {
+                        playlist.add(song);
+                        updateStatus("Added to queue: " + safeText(song.getTitle()));
+                    } else {
+                        updateStatus("Already in queue: " + safeText(song.getTitle()));
+                    }
+                    lanSync.notifyWebStateChanged();
+                    ref.set(okJson("Queue updated."));
+                }
+            } finally {
+                latch.countDown();
+            }
+        });
+        awaitLatch(latch);
+        return ref.get().put("state", buildWebStateSnapshot());
+    }
+
+    private JSONObject playQueueIndexFromWeb(int index) {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<JSONObject> ref = new AtomicReference<>(errorJson("Could not play queue item."));
+        Platform.runLater(() -> {
+            try {
+                if (index < 0 || index >= playlist.size()) {
+                    ref.set(errorJson("Queue index out of range."));
+                    return;
+                }
+                currentSongIndex = index;
+                isPaused = false;
+                isPlaying = false;
+                audioPlayer.stop();
+                playMusic();
+                lanSync.notifyWebStateChanged();
+                ref.set(okJson("Playing queue item."));
+            } finally {
+                latch.countDown();
+            }
+        });
+        awaitLatch(latch);
+        return ref.get().put("state", buildWebStateSnapshot());
+    }
+
+    private JSONObject removeQueueIndexFromWeb(int index) {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<JSONObject> ref = new AtomicReference<>(errorJson("Could not remove queue item."));
+        Platform.runLater(() -> {
+            try {
+                if (index < 0 || index >= playlist.size()) {
+                    ref.set(errorJson("Queue index out of range."));
+                    return;
+                }
+                if (index == currentSongIndex && (isPlaying || isPaused)) {
+                    stopMusic();
+                }
+                playlist.remove(index);
+                if (playlist.isEmpty()) {
+                    currentSongIndex = -1;
+                    updateNowPlaying(null);
+                } else if (currentSongIndex >= playlist.size()) {
+                    currentSongIndex = playlist.size() - 1;
+                } else if (index < currentSongIndex) {
+                    currentSongIndex--;
+                }
+                updateStatus("Queue item removed.");
+                lanSync.notifyWebStateChanged();
+                ref.set(okJson("Queue item removed."));
+            } finally {
+                latch.countDown();
+            }
+        });
+        awaitLatch(latch);
+        return ref.get().put("state", buildWebStateSnapshot());
+    }
+
+    private JSONObject clearQueueFromWeb() {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<JSONObject> ref = new AtomicReference<>(errorJson("Could not clear queue."));
+        Platform.runLater(() -> {
+            try {
+                stopMusic();
+                playlist.clear();
+                currentSongIndex = -1;
+                updateNowPlaying(null);
+                updateStatus("Playlist cleared.");
+                lanSync.notifyWebStateChanged();
+                ref.set(okJson("Queue cleared."));
+            } finally {
+                latch.countDown();
+            }
+        });
+        awaitLatch(latch);
+        return ref.get().put("state", buildWebStateSnapshot());
+    }
+
+    private JSONObject setToggleFromWeb(String toggle, boolean enabled) {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<JSONObject> ref = new AtomicReference<>(errorJson("Could not update toggle."));
+        Platform.runLater(() -> {
+            try {
+                switch (safeText(toggle).toLowerCase(Locale.ROOT)) {
+                    case "shuffle" -> {
+                        shuffleEnabled = enabled;
+                        updateToggleButtonStyle(shuffleButton, shuffleEnabled);
+                        updateStatus(shuffleEnabled ? "Shuffle ON" : "Shuffle OFF");
+                    }
+                    case "repeat" -> {
+                        repeatEnabled = enabled;
+                        updateToggleButtonStyle(repeatButton, repeatEnabled);
+                        updateStatus(repeatEnabled ? "Repeat ON" : "Repeat OFF");
+                    }
+                    case "autoradio" -> {
+                        autoRadioEnabled = enabled;
+                        updateToggleButtonStyle(autoRadioButton, autoRadioEnabled);
+                        updateStatus(autoRadioEnabled ? "Auto Radio ON - related songs will be added automatically" : "Auto Radio OFF");
+                        if (autoRadioEnabled && !playlist.isEmpty()) {
+                            autoFetchMoreSongs(playlist.get(playlist.size() - 1), false);
+                        }
+                    }
+                    default -> {
+                        ref.set(errorJson("Unknown toggle: " + toggle));
+                        return;
+                    }
+                }
+                lanSync.notifyWebStateChanged();
+                ref.set(okJson("Toggle updated."));
+            } finally {
+                latch.countDown();
+            }
+        });
+        awaitLatch(latch);
+        return ref.get().put("state", buildWebStateSnapshot());
+    }
+
+    private JSONObject addRelatedSongsFromWeb() {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<JSONObject> ref = new AtomicReference<>(errorJson("No base song available for related songs."));
+        Platform.runLater(() -> {
+            try {
+                SongData baseSong = null;
+                if (currentSongIndex >= 0 && currentSongIndex < playlist.size()) {
+                    baseSong = playlist.get(currentSongIndex);
+                } else if (!playlist.isEmpty()) {
+                    baseSong = playlist.get(playlist.size() - 1);
+                }
+
+                if (baseSong == null) {
+                    ref.set(errorJson("Queue is empty."));
+                    return;
+                }
+
+                autoFetchMoreSongs(baseSong, false);
+                ref.set(okJson("Finding related songs..."));
+            } finally {
+                latch.countDown();
+            }
+        });
+        awaitLatch(latch);
+        return ref.get().put("state", buildWebStateSnapshot());
+    }
+
+    private void awaitLatch(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void setMobileSearchVisible(boolean visible) {
