@@ -92,7 +92,7 @@ public class StandaloneWebService {
     }
 
     public synchronized JSONObject search(String query) throws Exception {
-        String normalized = normalizeWhitespace(query);
+        String normalized = RelatedTrackHelper.normalizeWhitespace(query);
         if (normalized.isBlank()) {
             return error("Search query is empty.");
         }
@@ -305,7 +305,7 @@ public class StandaloneWebService {
 
     private int appendRelatedSongs(SongData baseSong) throws Exception {
         int added = 0;
-        for (String query : buildAutoRadioQueries(baseSong)) {
+        for (String query : RelatedTrackHelper.buildQueries(baseSong)) {
             if (added >= 5) {
                 break;
             }
@@ -341,14 +341,7 @@ public class StandaloneWebService {
         if (indexOfSong(candidate.getId()) != -1) {
             return false;
         }
-        String baseTitle = normalizeSongSignature(baseSong.getTitle());
-        String candidateTitle = normalizeSongSignature(candidate.getTitle());
-        if (!baseTitle.isBlank() && baseTitle.equals(candidateTitle)) {
-            return false;
-        }
-        return baseTitle.isBlank()
-                || candidateTitle.isBlank()
-                || (!candidateTitle.contains(baseTitle) && !baseTitle.contains(candidateTitle));
+        return !RelatedTrackHelper.isTooSimilar(baseSong, candidate.getTitle(), candidate.getChannel());
     }
 
     private void resolveAndStart(SongData song, int index, long startAtMs) throws Exception {
@@ -423,46 +416,6 @@ public class StandaloneWebService {
             return pausedPositionMs;
         }
         return Math.max(0, System.currentTimeMillis() - playbackStartedAtMs);
-    }
-
-    private List<String> buildAutoRadioQueries(SongData baseSong) {
-        List<String> queries = new ArrayList<>();
-        String title = cleanSongTitle(baseSong.getTitle());
-        String channel = normalizeWhitespace(baseSong.getChannel());
-        addIfPresent(queries, title + " " + channel + " similar songs");
-        addIfPresent(queries, channel + " songs");
-        addIfPresent(queries, channel + " music");
-        addIfPresent(queries, title + " vibe playlist");
-        addIfPresent(queries, title + " " + channel);
-        return queries;
-    }
-
-    private void addIfPresent(List<String> queries, String value) {
-        String normalized = normalizeWhitespace(value);
-        if (!normalized.isBlank() && !queries.contains(normalized)) {
-            queries.add(normalized);
-        }
-    }
-
-    private String cleanSongTitle(String title) {
-        String cleaned = safe(title)
-                .replaceAll("\\(.*?\\)|\\[.*?\\]", " ")
-                .replaceAll("(?i)\\b(feat|ft|featuring|official|lyrics|lyric video|video|audio|hd|4k|remaster(ed)?)\\b", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-        return cleaned.isBlank() ? safe(title).trim() : cleaned;
-    }
-
-    private String normalizeSongSignature(String title) {
-        return cleanSongTitle(title)
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9\\s]", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-    }
-
-    private String normalizeWhitespace(String value) {
-        return safe(value).replaceAll("\\s+", " ").trim();
     }
 
     private JSONObject ok(String message) {

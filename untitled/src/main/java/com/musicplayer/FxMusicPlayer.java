@@ -912,16 +912,7 @@ public class FxMusicPlayer {
     }
 
     private List<String> buildAutoRadioQueries(SongData baseSong) {
-        List<String> queries = new ArrayList<>();
-        String title = cleanSongTitle(baseSong.getTitle());
-        String channel = normalizeWhitespace(baseSong.getChannel());
-
-        addIfPresent(queries, title + " " + channel + " similar songs");
-        addIfPresent(queries, channel + " songs");
-        addIfPresent(queries, channel + " music");
-        addIfPresent(queries, title + " vibe playlist");
-        addIfPresent(queries, title + " " + channel);
-        return queries;
+        return RelatedTrackHelper.buildQueries(baseSong);
     }
 
     private boolean isRelatedAutoRadioCandidate(SongData baseSong, List<SongData> pendingSongs, YouTubeVideo candidate) {
@@ -947,46 +938,11 @@ public class FxMusicPlayer {
             return false;
         }
 
-        String baseTitle = normalizeSongSignature(baseSong.getTitle());
-        String candidateTitle = normalizeSongSignature(candidate.getTitle());
-        if (!baseTitle.isBlank() && baseTitle.equals(candidateTitle)) {
-            return false;
-        }
-
-        if (!baseTitle.isBlank() && !candidateTitle.isBlank()
-                && (candidateTitle.contains(baseTitle) || baseTitle.contains(candidateTitle))) {
+        if (RelatedTrackHelper.isTooSimilar(baseSong, candidate.getTitle(), candidate.getChannel())) {
             return false;
         }
 
         return true;
-    }
-
-    private void addIfPresent(List<String> queries, String value) {
-        String normalized = normalizeWhitespace(value);
-        if (!normalized.isBlank() && !queries.contains(normalized)) {
-            queries.add(normalized);
-        }
-    }
-
-    private String cleanSongTitle(String title) {
-        String cleaned = safeText(title)
-                .replaceAll("\\(.*?\\)|\\[.*?\\]", " ")
-                .replaceAll("(?i)\\b(feat|ft|featuring|official|lyrics|lyric video|video|audio|hd|4k|remaster(ed)?)\\b", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-        return cleaned.isBlank() ? safeText(title).trim() : cleaned;
-    }
-
-    private String normalizeSongSignature(String title) {
-        return cleanSongTitle(title)
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9\\s]", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
-    }
-
-    private String normalizeWhitespace(String value) {
-        return safeText(value).replaceAll("\\s+", " ").trim();
     }
 
     private String safeText(String value) {
@@ -1503,7 +1459,7 @@ public class FxMusicPlayer {
         if (youtubeService == null) {
             return errorJson("YouTube service not connected.");
         }
-        String normalizedQuery = normalizeWhitespace(query);
+        String normalizedQuery = RelatedTrackHelper.normalizeWhitespace(query);
         if (normalizedQuery.isBlank()) {
             return errorJson("Search query is empty.");
         }
