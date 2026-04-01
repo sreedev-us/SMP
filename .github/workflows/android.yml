@@ -70,8 +70,10 @@ jobs:
       - name: Expose GraalVM for Gluon
         run: |
           echo "GRAALVM_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK=${{ steps.setup-ndk.outputs.ndk-path }}" >> "$GITHUB_ENV"
           echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
           java -version
           gu --version
@@ -88,7 +90,15 @@ jobs:
         run: |
           mvn -B -Pandroid -DskipTests clean gluonfx:build gluonfx:package
         env:
+          ANDROID_SDK: ${{ env.ANDROID_SDK }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
           ANDROID_NDK: ${{ steps.setup-ndk.outputs.ndk-path }}
+
+      - name: Print Android package logs
+        if: failure()
+        run: |
+          find target -type f \( -path "*/gluonfx/*/log/*" -o -name "process-package-task-*.log" \) -print -exec sh -c 'echo "===== $1 ====="; cat "$1"' _ {} \;
 
       - name: Upload Android artifacts
         if: always()
