@@ -88,17 +88,21 @@ jobs:
 
       - name: Build Android package
         run: |
+          set +e
           mvn -B -Pandroid -DskipTests clean gluonfx:build gluonfx:package
+          status=$?
+          echo "Maven exit code: $status"
+          echo "===== Android package logs ====="
+          find target -type f \( -path "*/gluonfx/*/log/*" -o -name "process-package-task-*.log" \) -print | while read -r file; do
+            echo "===== $file ====="
+            cat "$file"
+          done
+          exit $status
         env:
           ANDROID_SDK: ${{ env.ANDROID_SDK }}
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
           ANDROID_NDK: ${{ steps.setup-ndk.outputs.ndk-path }}
-
-      - name: Print Android package logs
-        if: failure()
-        run: |
-          find target -type f \( -path "*/gluonfx/*/log/*" -o -name "process-package-task-*.log" \) -print -exec sh -c 'echo "===== $1 ====="; cat "$1"' _ {} \;
 
       - name: Upload Android artifacts
         if: always()
