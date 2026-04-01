@@ -29,6 +29,7 @@ public class StandaloneWebService {
     private boolean paused = true;
     private long playbackStartedAtMs;
     private long pausedPositionMs;
+    private long requestedStartPositionMs;
     private long knownDurationMs;
     private String currentResolvedSource;
     private LyricsData currentLyricsData;
@@ -55,6 +56,7 @@ public class StandaloneWebService {
         json.put("isPlaying", currentSongIndex >= 0 && !paused);
         json.put("currentSongIndex", currentSongIndex);
         json.put("currentTimeMs", getCurrentPositionMs());
+        json.put("requestedStartMs", requestedStartPositionMs);
         json.put("durationMs", knownDurationMs);
         json.put("audioVersion", audioVersion.get());
         json.put("audioUrl", currentSongIndex >= 0 ? "/audio/current?v=" + audioVersion.get() : "");
@@ -161,10 +163,12 @@ public class StandaloneWebService {
         }
         if (paused) {
             paused = false;
-            playbackStartedAtMs = System.currentTimeMillis() - Math.max(0, positionMs);
+            requestedStartPositionMs = Math.max(0, positionMs);
+            playbackStartedAtMs = System.currentTimeMillis() - requestedStartPositionMs;
             lastStatus = "Resumed playback.";
         } else {
             pausedPositionMs = Math.max(0, positionMs);
+            requestedStartPositionMs = pausedPositionMs;
             paused = true;
             lastStatus = "Paused playback.";
         }
@@ -216,6 +220,7 @@ public class StandaloneWebService {
 
     public synchronized JSONObject seek(long positionMs) {
         pausedPositionMs = Math.max(0, positionMs);
+        requestedStartPositionMs = pausedPositionMs;
         if (!paused) {
             playbackStartedAtMs = System.currentTimeMillis() - pausedPositionMs;
         }
@@ -232,6 +237,7 @@ public class StandaloneWebService {
             currentSongIndex = -1;
             paused = true;
             pausedPositionMs = 0;
+            requestedStartPositionMs = 0;
             currentResolvedSource = null;
             currentLyricsData = null;
             knownDurationMs = 0;
@@ -240,6 +246,7 @@ public class StandaloneWebService {
             currentSongIndex = Math.min(index, queue.size() - 1);
             paused = true;
             pausedPositionMs = 0;
+            requestedStartPositionMs = 0;
             currentResolvedSource = null;
             currentLyricsData = null;
             knownDurationMs = 0;
@@ -257,6 +264,7 @@ public class StandaloneWebService {
         currentSongIndex = -1;
         paused = true;
         pausedPositionMs = 0;
+        requestedStartPositionMs = 0;
         knownDurationMs = 0;
         currentResolvedSource = null;
         currentLyricsData = null;
@@ -349,6 +357,7 @@ public class StandaloneWebService {
         currentSongIndex = index;
         paused = false;
         pausedPositionMs = Math.max(0, startAtMs);
+        requestedStartPositionMs = pausedPositionMs;
         playbackStartedAtMs = System.currentTimeMillis() - pausedPositionMs;
         knownDurationMs = 0;
         audioVersion.incrementAndGet();

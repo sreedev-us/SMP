@@ -8,9 +8,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
@@ -106,7 +106,20 @@ public class StandaloneWebServer {
     private void proxyLocalAudio(HttpExchange exchange, String path) throws IOException {
         try (RandomAccessFile file = new RandomAccessFile(path, "r")) {
             long fileLength = file.length();
+            ByteRange range = parseRange(exchange.getRequestHeaders().getFirst("Range"), fileLength);
             exchange.getResponseHeaders().set("Content-Type", guessContentType(path));
+            if (range != null) {
+                long contentLength = range.end() - range.start() + 1;
+                exchange.getResponseHeaders().set("Content-Range",
+                        "bytes " + range.start() + "-" + range.end() + "/" + fileLength);
+                exchange.getResponseHeaders().set("Content-Length", String.valueOf(contentLength));
+                exchange.sendResponseHeaders(206, contentLength);
+                file.seek(range.start());
+                try (OutputStream os = exchange.getResponseBody()) {
+                    copyRange(file, os, contentLength);
+                }
+                return;
+            }
             exchange.getResponseHeaders().set("Content-Length", String.valueOf(fileLength));
             exchange.sendResponseHeaders(200, fileLength);
             try (OutputStream os = exchange.getResponseBody()) {
@@ -120,14 +133,28 @@ public class StandaloneWebServer {
     }
 
     private void proxyRemoteAudio(HttpExchange exchange, String source) throws IOException {
-        URLConnection connection = new URL(source).openConnection();
+        HttpURLConnection connection = (HttpURLConnection) new URL(source).openConnection();
         connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+        connection.setRequestProperty("Accept-Encoding", "identity");
+        String rangeHeader = exchange.getRequestHeaders().getFirst("Range");
+        if (rangeHeader != null && !rangeHeader.isBlank()) {
+            connection.setRequestProperty("Range", rangeHeader);
+        }
+        connection.connect();
         String contentType = connection.getContentType();
         if (contentType == null || contentType.isBlank()) {
             contentType = "audio/mpeg";
         }
         exchange.getResponseHeaders().set("Content-Type", contentType);
-        exchange.sendResponseHeaders(200, 0);
+        String contentRange = connection.getHeaderField("Content-Range");
+        if (contentRange != null && !contentRange.isBlank()) {
+            exchange.getResponseHeaders().set("Content-Range", contentRange);
+        }
+        String contentLength = connection.getHeaderField("Content-Length");
+        if (contentLength != null && !contentLength.isBlank()) {
+            exchange.getResponseHeaders().set("Content-Length", contentLength);
+        }
+        exchange.sendResponseHeaders(connection.getResponseCode() == 206 ? 206 : 200, 0);
         try (InputStream in = connection.getInputStream();
              OutputStream os = exchange.getResponseBody()) {
             byte[] buffer = new byte[16 * 1024];
@@ -135,6 +162,47 @@ public class StandaloneWebServer {
             while ((read = in.read(buffer)) != -1) {
                 os.write(buffer, 0, read);
             }
+        }
+    }
+
+    private ByteRange parseRange(String header, long fileLength) {
+        if (header == null || header.isBlank() || !header.startsWith("bytes=") || fileLength <= 0) {
+            return null;
+        }
+        try {
+            String value = header.substring("bytes=".length()).trim();
+            String[] parts = value.split("-", 2);
+            long start;
+            long end;
+            if (parts[0].isBlank()) {
+                long suffixLength = Long.parseLong(parts[1]);
+                start = Math.max(0, fileLength - suffixLength);
+                end = fileLength - 1;
+            } else {
+                start = Long.parseLong(parts[0]);
+                end = parts.length > 1 && !parts[1].isBlank() ? Long.parseLong(parts[1]) : fileLength - 1;
+            }
+            if (start < 0 || start >= fileLength) {
+                return null;
+            }
+            end = Math.max(start, Math.min(end, fileLength - 1));
+            return new ByteRange(start, end);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private void copyRange(RandomAccessFile file, OutputStream os, long remaining) throws IOException {
+        byte[] buffer = new byte[16 * 1024];
+        long bytesLeft = remaining;
+        while (bytesLeft > 0) {
+            int bytesToRead = (int) Math.min(buffer.length, bytesLeft);
+            int read = file.read(buffer, 0, bytesToRead);
+            if (read == -1) {
+                break;
+            }
+            os.write(buffer, 0, read);
+            bytesLeft -= read;
         }
     }
 
@@ -267,5 +335,8 @@ public class StandaloneWebServer {
     @FunctionalInterface
     private interface ThrowingJsonSupplier {
         JSONObject get() throws Exception;
+    }
+
+    private record ByteRange(long start, long end) {
     }
 }

@@ -474,7 +474,7 @@
                         <span id="durationLabel">0:00</span>
                     </div>
                     <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-                    <audio id="audioPlayer" controls></audio>
+                    <audio id="audioPlayer" controls preload="auto" playsinline></audio>
                     <button class="secondary" id="unlockButton" style="margin-top:12px; width:100%; display:none;">Tap to Enable Audio</button>
                 </div>
             </article>
@@ -497,7 +497,10 @@
         lyrics: [],
         activeLyricIndex: -1,
         currentAudioUrl: "",
-        latestState: null
+        latestState: null,
+        sourceLoading: false,
+        suppressPauseRecovery: false,
+        pendingPlayAttempt: false
     };
 
     const els = {
@@ -609,10 +612,12 @@
         const nextAudioUrl = state.audioUrl || '';
         if (nextAudioUrl && appState.currentAudioUrl !== nextAudioUrl) {
             appState.currentAudioUrl = nextAudioUrl;
+            appState.sourceLoading = true;
             els.audioPlayer.src = nextAudioUrl;
             els.audioPlayer.load();
             els.audioPlayer.onloadedmetadata = () => {
-                els.audioPlayer.currentTime = Math.max(0, (state.currentTimeMs || 0) / 1000);
+                const requestedStartMs = Math.max(0, Number(state.requestedStartMs || 0));
+                els.audioPlayer.currentTime = requestedStartMs / 1000;
                 els.audioPlayer.onloadedmetadata = null;
                 if (state.isPlaying) {
                     attemptPlayback();
@@ -621,7 +626,11 @@
         } else if (state.isPlaying && els.audioPlayer.paused && nextAudioUrl) {
             attemptPlayback();
         } else if (state.isPaused && !els.audioPlayer.paused) {
+            appState.suppressPauseRecovery = true;
             els.audioPlayer.pause();
+            setTimeout(() => {
+                appState.suppressPauseRecovery = false;
+            }, 300);
         }
 
         renderQueue(state.queue || []);
@@ -742,11 +751,17 @@
     }
 
     function attemptPlayback() {
+        if (appState.pendingPlayAttempt || !els.audioPlayer.src) {
+            return;
+        }
+        appState.pendingPlayAttempt = true;
         els.audioPlayer.play().then(() => {
             els.unlockButton.style.display = 'none';
+            appState.pendingPlayAttempt = false;
         }).catch(() => {
             els.unlockButton.style.display = 'block';
             els.statusText.textContent = 'Tap "Enable Audio" to start playback in this browser.';
+            appState.pendingPlayAttempt = false;
         });
     }
 
@@ -768,6 +783,55 @@
         els.durationLabel.textContent = formatTime(total);
         els.progressFill.style.width = total > 0 ? `${(current / total) * 100}%` : '0%';
         syncLyricsTo(current * 1000);
+    });
+
+    els.audioPlayer.addEventListener('playing', () => {
+        appState.sourceLoading = false;
+        els.unlockButton.style.display = 'none';
+        if (appState.latestState?.isPlaying) {
+            els.statusText.textContent = `Playing ${appState.latestState.currentSong?.title || 'track'}.`;
+        }
+    });
+
+    els.audioPlayer.addEventListener('canplay', () => {
+        if (appState.sourceLoading && appState.latestState?.isPlaying) {
+            attemptPlayback();
+        }
+    });
+
+    els.audioPlayer.addEventListener('waiting', () => {
+        if (appState.latestState?.isPlaying) {
+            els.statusText.textContent = 'Buffering audio...';
+        }
+    });
+
+    els.audioPlayer.addEventListener('stalled', () => {
+        if (appState.latestState?.isPlaying) {
+            els.statusText.textContent = 'Connection slowed down. Trying to continue playback...';
+            setTimeout(() => {
+                if (appState.latestState?.isPlaying && els.audioPlayer.paused && !els.audioPlayer.ended) {
+                    attemptPlayback();
+                }
+            }, 350);
+        }
+    });
+
+    els.audioPlayer.addEventListener('pause', () => {
+        if (appState.suppressPauseRecovery) {
+            return;
+        }
+        if (appState.latestState?.isPlaying && !els.audioPlayer.ended) {
+            setTimeout(() => {
+                if (appState.latestState?.isPlaying && els.audioPlayer.paused && !els.audioPlayer.ended) {
+                    attemptPlayback();
+                }
+            }, 300);
+        }
+    });
+
+    els.audioPlayer.addEventListener('seeked', () => {
+        fetchJson(`/api/seek?positionMs=${Math.max(0, Math.floor(els.audioPlayer.currentTime * 1000))}`, { method: 'POST' })
+            .catch(() => {});
     });
 
     els.audioPlayer.addEventListener('ended', () => {
