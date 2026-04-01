@@ -32,7 +32,7 @@ Required:
 - Android SDK with `ANDROID_HOME` or `ANDROID_SDK_ROOT`
 - GraalVM with `GRAALVM_HOME`
 - Gluon Substrate prerequisites installed
-- Android packages `platforms;android-36`, `build-tools;36.0.0`, `platform-tools`, `extras;android;m2repository`, and `extras;google;m2repository`
+- Android packages `platforms;android-35`, `build-tools;35.0.0`, `platform-tools`, `extras;android;m2repository`, and `extras;google;m2repository`
 
 Build an Android package:
 
