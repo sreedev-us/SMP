@@ -147,6 +147,7 @@ Files included:
 
 - `Dockerfile`
 - `deploy/deploy-cloudrun.sh`
+- `deploy/deploy-cloudrun.ps1`
 
 Quick deploy:
 
@@ -159,6 +160,13 @@ chmod +x deploy/deploy-cloudrun.sh
 ```
 
 This deploys the site as a public Cloud Run service on port `8090`.
+
+Windows PowerShell:
+
+```powershell
+cd untitled
+.\deploy\deploy-cloudrun.ps1 -ProjectId YOUR_PROJECT_ID -Region us-central1 -ServiceName harmony-web
+```
 
 Recommended notes:
 
