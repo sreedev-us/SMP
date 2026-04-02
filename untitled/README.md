@@ -139,6 +139,33 @@ sudo systemctl reload nginx
 sudo certbot --nginx -d your-domain.com
 ```
 
+## Google Cloud Run
+
+You can also deploy the standalone website to Google Cloud Run.
+
+Files included:
+
+- `Dockerfile`
+- `deploy/deploy-cloudrun.sh`
+
+Quick deploy:
+
+```bash
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+cd untitled
+chmod +x deploy/deploy-cloudrun.sh
+./deploy/deploy-cloudrun.sh YOUR_PROJECT_ID us-central1 harmony-web
+```
+
+This deploys the site as a public Cloud Run service on port `8090`.
+
+Recommended notes:
+
+- Cloud Run is best for lightweight personal use of this web app.
+- The current player state is in memory, so queue/playback state can reset on instance restart.
+- `deploy-cloudrun.sh` uses `--concurrency 1` and `--max-instances 1` to keep behavior more predictable.
+
 ## GitHub Actions
 
 If Android packaging is blocked locally on Windows, use the workflow in `.github/workflows/android.yml`.
