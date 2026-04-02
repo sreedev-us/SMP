@@ -17,7 +17,7 @@ function Invoke-GCloud {
 
     & gcloud @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "gcloud command failed with exit code $LASTEXITCODE: gcloud $($Arguments -join ' ')"
+        throw "gcloud command failed with exit code ${LASTEXITCODE}: gcloud $($Arguments -join ' ')"
     }
 }
 
