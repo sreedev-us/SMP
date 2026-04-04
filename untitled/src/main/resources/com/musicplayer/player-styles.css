@@ -1833,3 +1833,128 @@
     -fx-scale-y: 1.05;
 }
 
+/* =========================================================================
+   MOBILE APP-FIRST HOME REFINEMENTS
+   ========================================================================= */
+
+.mobile-home-hero-card {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(24, 37, 54, 0.96), rgba(10, 16, 26, 0.98));
+    -fx-background-radius: 24;
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-border-radius: 24;
+    -fx-padding: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.30), 26, 0.18, 0, 8);
+}
+
+.mobile-home-hero-title {
+    -fx-text-fill: white;
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+}
+
+.mobile-home-hero-copy {
+    -fx-text-fill: rgba(255, 255, 255, 0.72);
+    -fx-font-size: 13px;
+    -fx-line-spacing: 2px;
+}
+
+.mobile-home-primary-button {
+    -fx-background-color: linear-gradient(to bottom right, #50e3c2, #3ac6f1);
+    -fx-text-fill: #06111a;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 18;
+    -fx-padding: 10 14;
+    -fx-cursor: hand;
+}
+
+.mobile-home-primary-button:pressed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+.mobile-action-chip {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-background-radius: 18;
+    -fx-padding: 10 14;
+    -fx-cursor: hand;
+}
+
+.mobile-action-chip:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.14);
+}
+
+.mobile-action-primary {
+    -fx-background-color: rgba(80, 227, 194, 0.18);
+    -fx-text-fill: #dffff7;
+}
+
+.mobile-action-danger {
+    -fx-background-color: rgba(255, 111, 97, 0.16);
+    -fx-text-fill: #ffd3ce;
+}
+
+.mobile-stat-card {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 18;
+    -fx-border-color: rgba(255, 255, 255, 0.06);
+    -fx-border-radius: 18;
+    -fx-padding: 12;
+    -fx-spacing: 10;
+}
+
+.mobile-stat-label {
+    -fx-text-fill: rgba(255, 255, 255, 0.66);
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.mobile-inline-action,
+.mobile-inline-play {
+    -fx-background-color: rgba(255, 255, 255, 0.09);
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 16;
+    -fx-padding: 9 14;
+    -fx-cursor: hand;
+}
+
+.mobile-inline-action:hover,
+.mobile-inline-play:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.16);
+}
+
+.mobile-inline-play {
+    -fx-background-color: linear-gradient(to bottom right, #1ed760, #1db954);
+    -fx-text-fill: #041009;
+}
+
+.mobile-search-results-list {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-background-radius: 18;
+    -fx-border-color: rgba(255, 255, 255, 0.06);
+    -fx-border-radius: 18;
+    -fx-padding: 6;
+}
+
+.mobile-search-results-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-padding: 14 14;
+    -fx-background-radius: 14;
+    -fx-border-color: transparent;
+}
+
+.mobile-search-results-list .list-cell:filled:selected,
+.mobile-search-results-list .list-cell:filled:hover {
+    -fx-background-color: rgba(80, 227, 194, 0.14);
+    -fx-text-fill: white;
+}
+

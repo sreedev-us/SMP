@@ -31,73 +31,50 @@
                         
                         <!-- Header -->
                         <HBox alignment="CENTER_LEFT" spacing="0">
-                            <Label text="Good morning!" styleClass="mobile-dashboard-title" />
+                            <VBox spacing="2">
+                                <Label text="Harmony Pro" styleClass="mobile-dashboard-title" />
+                                <Label text="Queue, radio, search, and lyrics built for mobile" styleClass="playlist-subtitle" />
+                            </VBox>
                             <Region HBox.hgrow="ALWAYS" />
                             <Button styleClass="icon-button-gear" onAction="#handleOpenSettings" />
-                            <Region minWidth="16" />
-                            <Button styleClass="icon-button-bell" />
                         </HBox>
 
-                        <!-- Jump back in -->
-                        <VBox spacing="10">
-                            <Label text="Jump back in" styleClass="mobile-section-heading" />
-                            <FlowPane hgap="10" vgap="10" prefWrapLength="400">
-                                <HBox styleClass="mobile-jump-card" prefWidth="180">
-                                    <Region styleClass="jump-art-chill" minWidth="60" minHeight="60" />
-                                    <VBox alignment="CENTER_LEFT" spacing="2" styleClass="jump-text-box">
-                                        <Label text="Chill" styleClass="jump-title" />
-                                        <Label text="Your Top Mixes" styleClass="jump-subtitle" />
-                                    </VBox>
-                                </HBox>
-                                <HBox styleClass="mobile-jump-card" prefWidth="180">
-                                    <Region styleClass="jump-art-indie" minWidth="60" minHeight="60" />
-                                    <VBox alignment="CENTER_LEFT" spacing="2" styleClass="jump-text-box">
-                                        <Label text="Indie" styleClass="jump-title" />
-                                        <Label text="Your Top Mixes" styleClass="jump-subtitle" />
-                                    </VBox>
-                                </HBox>
-                                <HBox styleClass="mobile-jump-card" prefWidth="180">
-                                    <Region styleClass="jump-art-pop" minWidth="60" minHeight="60" />
-                                    <VBox alignment="CENTER_LEFT" spacing="2" styleClass="jump-text-box">
-                                        <Label text="Pop" styleClass="jump-title" />
-                                        <Label text="Your Top Mixes" styleClass="jump-subtitle" />
-                                    </VBox>
-                                </HBox>
-                                <HBox styleClass="mobile-jump-card" prefWidth="180">
-                                    <Region styleClass="jump-art-workout" minWidth="60" minHeight="60" />
-                                    <VBox alignment="CENTER_LEFT" spacing="2" styleClass="jump-text-box">
-                                        <Label text="Workout" styleClass="jump-title" />
-                                        <Label text="High Energy" styleClass="jump-subtitle" />
-                                    </VBox>
-                                </HBox>
-                            </FlowPane>
-                        </VBox>
-
-                        <!-- Discover & Releases -->
-                        <HBox spacing="12">
-                            <VBox spacing="10" HBox.hgrow="ALWAYS">
-                                <Label text="Daily Discover" styleClass="mobile-section-heading" />
-                                <VBox styleClass="mobile-hero-card discover-card-gradient" minHeight="160">
-                                    <Region VBox.vgrow="ALWAYS" />
-                                    <Label text="Discover Weekly" styleClass="hero-card-title" />
+                        <!-- Dynamic hero -->
+                        <VBox spacing="14" styleClass="mobile-home-hero-card">
+                            <HBox alignment="CENTER_LEFT" spacing="10">
+                                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                    <Label text="Start from anywhere" styleClass="mobile-home-hero-title" />
+                                    <Label text="Search YouTube, jump back into your queue, or let Auto Radio keep the session alive." styleClass="mobile-home-hero-copy" wrapText="true" />
                                 </VBox>
-                            </VBox>
-                            <VBox spacing="10" HBox.hgrow="ALWAYS">
-                                <Label text="New Releases" styleClass="mobile-section-heading" />
-                                <HBox spacing="10">
-                                    <VBox styleClass="release-card">
-                                        <Region styleClass="release-art-taylor" minWidth="80" minHeight="80" />
-                                        <Label text="Taylor Swift" styleClass="release-title" />
-                                        <Label text="'The Eras Tour...'" styleClass="release-subtitle" />
-                                    </VBox>
-                                    <VBox styleClass="release-card">
-                                        <Region styleClass="release-art-olivia" minWidth="80" minHeight="80" />
-                                        <Label text="Olivia Rodrigo" styleClass="release-title" />
-                                        <Label text="- GUTS" styleClass="release-subtitle" />
-                                    </VBox>
-                                </HBox>
-                            </VBox>
-                        </HBox>
+                                <Button text="Now Playing" styleClass="mobile-home-primary-button" onAction="#handleOpenNowPlaying" />
+                            </HBox>
+
+                            <FlowPane hgap="10" vgap="10" prefWrapLength="420">
+                                <Button text="Search Songs" styleClass="mobile-action-chip mobile-action-primary" onAction="#handleNavSearch" />
+                                <Button text="Open Queue" styleClass="mobile-action-chip" onAction="#handleNavLibrary" />
+                                <Button text="Add Local Files" styleClass="mobile-action-chip" onAction="#handleAddLocalFiles" />
+                                <Button text="Add Related" styleClass="mobile-action-chip" onAction="#handleAddRelatedSongs" />
+                                <Button text="Auto Radio" styleClass="mobile-action-chip" onAction="#handleToggleAutoRadio" />
+                                <Button text="Clear Queue" styleClass="mobile-action-chip mobile-action-danger" onAction="#handleClearPlaylist" />
+                            </FlowPane>
+
+                            <HBox spacing="10">
+                                <VBox styleClass="mobile-stat-card" HBox.hgrow="ALWAYS">
+                                    <Label text="Playback" styleClass="mobile-stat-label" />
+                                    <HBox alignment="CENTER_LEFT" spacing="8">
+                                        <Button styleClass="mobile-inline-play" onAction="#handlePlayPause" />
+                                        <Button text="Next" styleClass="mobile-inline-action" onAction="#handleNext" />
+                                    </HBox>
+                                </VBox>
+                                <VBox styleClass="mobile-stat-card" HBox.hgrow="ALWAYS">
+                                    <Label text="Discovery" styleClass="mobile-stat-label" />
+                                    <HBox alignment="CENTER_LEFT" spacing="8">
+                                        <Button text="Shuffle" styleClass="mobile-inline-action" onAction="#handleToggleShuffle" />
+                                        <Button text="Repeat" styleClass="mobile-inline-action" onAction="#handleToggleRepeat" />
+                                    </HBox>
+                                </VBox>
+                            </HBox>
+                        </VBox>
 
                         <!-- Your queue -->
                         <VBox spacing="10">
@@ -111,8 +88,8 @@
                             <HBox alignment="CENTER_LEFT" spacing="10">
                                 <Label text="For this track" styleClass="mobile-section-heading" />
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Button text="Add Related" styleClass="icon-button" onAction="#handleAddRelatedSongs" />
-                                <Button text="Auto Radio" styleClass="icon-button" onAction="#handleToggleAutoRadio" />
+                                <Button text="Add Related" styleClass="mobile-inline-action" onAction="#handleAddRelatedSongs" />
+                                <Button text="Auto Radio" styleClass="mobile-inline-action" onAction="#handleToggleAutoRadio" />
                             </HBox>
                             <Label fx:id="mobileRecommendationSummaryLabel" text="Play a song to unlock related recommendations." styleClass="playlist-subtitle" wrapText="true" />
                             <ListView fx:id="mobileRecommendationsList" styleClass="mobile-search-results-list" prefHeight="240" maxHeight="240" />
@@ -204,6 +181,12 @@
                         <!-- Search History & Queue hooks -->
                         <VBox fx:id="searchHistorySection" visible="false" managed="false" />
                         <FlowPane fx:id="searchHistoryContainer" visible="false" managed="false" />
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Button text="Search Results" styleClass="mobile-inline-action" onAction="#handleNavSearch" />
+                            <Button text="Queue" styleClass="mobile-inline-action" onAction="#handleNavLibrary" />
+                            <Region HBox.hgrow="ALWAYS" />
+                            <Button text="Files" styleClass="mobile-inline-action" onAction="#handleAddLocalFiles" />
+                        </HBox>
                         <ListView fx:id="searchResultsList" styleClass="mobile-search-results-list" visible="false" managed="false" VBox.vgrow="ALWAYS" minHeight="320" />
                         <ListView fx:id="playlistView" styleClass="mobile-search-results-list" visible="false" managed="false" VBox.vgrow="ALWAYS" minHeight="320" />
                         
@@ -425,18 +408,18 @@
 
             <!-- Transport Controls -->
             <HBox alignment="CENTER" styleClass="now-playing-transport" spacing="24">
-                <Button fx:id="shuffleButton" styleClass="icon-button-shuffle" onAction="#handleToggleShuffle" />
+                <Button styleClass="icon-button-shuffle" onAction="#handleToggleShuffle" />
                 <Button styleClass="icon-button-prev" onAction="#handlePrevious" />
                 <Button fx:id="expandedPlayPauseButton" styleClass="now-playing-play-btn" onAction="#handlePlayPause" />
                 <Button styleClass="icon-button-next" onAction="#handleNext" />
-                <Button fx:id="repeatButton" styleClass="icon-button-repeat" onAction="#handleToggleRepeat" />
+                <Button styleClass="icon-button-repeat" onAction="#handleToggleRepeat" />
             </HBox>
             
             <HBox styleClass="now-playing-bottom-row" alignment="CENTER_LEFT" spacing="16">
                 <Region styleClass="icon-devices" />
                 <Region HBox.hgrow="ALWAYS" />
-                <Button fx:id="autoRadioButton" text="Auto Radio" styleClass="icon-button" onAction="#handleToggleAutoRadio" />
-                <Button text="Related" styleClass="icon-button" onAction="#handleAddRelatedSongs" />
+                <Button text="Auto Radio" styleClass="mobile-inline-action" onAction="#handleToggleAutoRadio" />
+                <Button text="Related" styleClass="mobile-inline-action" onAction="#handleAddRelatedSongs" />
                 <Region styleClass="icon-share" />
                 <Region styleClass="icon-playlist-add" />
             </HBox>
