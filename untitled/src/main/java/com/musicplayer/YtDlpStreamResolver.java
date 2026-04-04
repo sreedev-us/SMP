@@ -19,6 +19,7 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -149,20 +150,39 @@ public class YtDlpStreamResolver {
 
         String videoUrl = "https://www.youtube.com/watch?v=" + videoId;
         String outputTemplate = tempDir.resolve(videoId + ".%(ext)s").toString();
+        Exception lastFailure = null;
+        for (List<String> cookieArgs : buildCookieStrategies()) {
+            cleanupPartialDownloads(outputFile, videoId);
+            try {
+                return runYtDlpAttempt(videoId, outputFile, outputTemplate, videoUrl, cookieArgs);
+            } catch (Exception ex) {
+                lastFailure = ex;
+                System.err.println("yt-dlp attempt failed" + formatCookieAttempt(cookieArgs) + ": " + ex.getMessage());
+            }
+        }
 
-        ProcessBuilder pb = new ProcessBuilder(List.of(
+        throw lastFailure != null
+            ? lastFailure
+            : new RuntimeException("yt-dlp could not produce an audio file.");
+    }
+
+    private static String runYtDlpAttempt(String videoId, File outputFile, String outputTemplate, String videoUrl,
+            List<String> cookieArgs) throws Exception {
+        List<String> command = new ArrayList<>(List.of(
             "yt-dlp",
             "-f", "bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio",
             "--no-playlist",
             "--no-part",
             "--retries", "1",
-            "--buffer-size", "16k",
-            "-o", outputTemplate,
-            videoUrl
+            "--buffer-size", "16k"
         ));
+        command.addAll(cookieArgs);
+        command.addAll(List.of("-o", outputTemplate, videoUrl));
+
+        ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(false);
 
-        System.out.println("Downloading audio with yt-dlp for: " + videoId);
+        System.out.println("Downloading audio with yt-dlp for: " + videoId + formatCookieAttempt(cookieArgs));
         Process process = pb.start();
 
         Thread stdoutThread = new Thread(() -> {
@@ -211,6 +231,34 @@ public class YtDlpStreamResolver {
         throw new RuntimeException(
             "yt-dlp did not produce an audio file (exit=" + exitCode + "). Tip: install ffmpeg for better format support."
         );
+    }
+
+    private static List<List<String>> buildCookieStrategies() {
+        List<List<String>> strategies = new ArrayList<>();
+        strategies.add(List.of());
+        for (String browser : List.of("edge", "chrome", "brave", "firefox")) {
+            strategies.add(List.of("--cookies-from-browser", browser));
+        }
+        return strategies;
+    }
+
+    private static String formatCookieAttempt(List<String> cookieArgs) {
+        if (cookieArgs == null || cookieArgs.isEmpty()) {
+            return "";
+        }
+        return " using " + String.join(" ", cookieArgs);
+    }
+
+    private static void cleanupPartialDownloads(File outputFile, String videoId) {
+        if (outputFile.exists() && outputFile.length() < 10_000) {
+            outputFile.delete();
+        }
+        for (String ext : List.of("mp4", "webm", "m4a", "part")) {
+            File candidate = tempDir.resolve(videoId + "." + ext).toFile();
+            if (candidate.exists() && candidate.length() < 10_000) {
+                candidate.delete();
+            }
+        }
     }
 
     private static String resolveWithJavaDownloader(String videoId, File outputFile) throws Exception {
