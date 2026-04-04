@@ -18,7 +18,10 @@ public class StandaloneWebService {
 
     private final YouTubeService youtubeService;
     private final LyricsService lyricsService = new LyricsService();
+    private final PlaylistShelfStore shelfStore = new PlaylistShelfStore();
     private final List<SongData> queue = new ArrayList<>();
+    private final List<SongData> likedSongs = new ArrayList<>();
+    private final List<SongData> recommendations = new ArrayList<>();
     private final Map<String, SongData> searchCache = new ConcurrentHashMap<>();
     private final AtomicLong audioVersion = new AtomicLong();
 
@@ -40,6 +43,7 @@ public class StandaloneWebService {
         DemoAuthSystem auth = new DemoAuthSystem();
         auth.googleLogin();
         this.youtubeService = new YouTubeService(auth);
+        this.likedSongs.addAll(shelfStore.loadLikedSongs());
     }
 
     public synchronized void setStateListener(Runnable stateListener) {
@@ -67,6 +71,16 @@ public class StandaloneWebService {
             queueJson.put(songToJson(song, i == currentSongIndex, i));
         }
         json.put("queue", queueJson);
+        JSONArray likedJson = new JSONArray();
+        for (int i = 0; i < likedSongs.size(); i++) {
+            likedJson.put(songToJson(likedSongs.get(i), false, i));
+        }
+        json.put("likedSongs", likedJson);
+        JSONArray recommendationsJson = new JSONArray();
+        for (int i = 0; i < recommendations.size(); i++) {
+            recommendationsJson.put(songToJson(recommendations.get(i), false, i));
+        }
+        json.put("recommendations", recommendationsJson);
         json.put("currentSong", currentSongIndex >= 0 && currentSongIndex < queue.size()
                 ? songToJson(queue.get(currentSongIndex), true, currentSongIndex)
                 : JSONObject.NULL);
@@ -313,6 +327,7 @@ public class StandaloneWebService {
 
     private int appendRelatedSongs(SongData baseSong) throws Exception {
         int added = 0;
+        recommendations.clear();
         for (String query : RelatedTrackHelper.buildQueries(baseSong)) {
             if (added >= 5) {
                 break;
@@ -329,6 +344,7 @@ public class StandaloneWebService {
                 song.setThumbnailUrl(v.getThumbnailUrl());
                 song.setType("youtube");
                 song.setLyricsSearchHint(query);
+                recommendations.add(copySong(song));
                 queue.add(song);
                 added++;
                 if (added >= 5) {
@@ -393,6 +409,7 @@ public class StandaloneWebService {
         item.put("thumbnailUrl", safe(song.getThumbnailUrl()));
         item.put("type", safe(song.getType()));
         item.put("current", current);
+        item.put("liked", indexOfLikedSong(song.getVideoId()) >= 0);
         return item;
     }
 
@@ -415,6 +432,86 @@ public class StandaloneWebService {
             }
         }
         return -1;
+    }
+
+    private int indexOfLikedSong(String videoId) {
+        for (int i = 0; i < likedSongs.size(); i++) {
+            if (safe(likedSongs.get(i).getVideoId()).equals(videoId)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public synchronized JSONObject toggleLiked(String videoId) {
+        SongData song = resolveSongForWishlist(videoId);
+        if (song == null) {
+            return error("Song not found for wishlist.");
+        }
+        int existingIndex = indexOfLikedSong(song.getVideoId());
+        if (existingIndex >= 0) {
+            likedSongs.remove(existingIndex);
+            lastStatus = "Removed from wishlist: " + safe(song.getTitle());
+        } else {
+            likedSongs.add(0, copySong(song));
+            lastStatus = "Saved to wishlist: " + safe(song.getTitle());
+        }
+        shelfStore.saveLikedSongs(likedSongs);
+        notifyStateChanged();
+        return withState(ok(lastStatus));
+    }
+
+    public synchronized JSONObject playLiked(String videoId) {
+        int index = indexOfLikedSong(videoId);
+        if (index < 0) {
+            return error("Saved song not found.");
+        }
+        SongData song = copySong(likedSongs.get(index));
+        int queueIndex = indexOfSong(song.getVideoId());
+        if (queueIndex < 0) {
+            queue.add(song);
+            queueIndex = queue.size() - 1;
+        }
+        return playIndex(queueIndex);
+    }
+
+    public synchronized JSONObject removeLiked(String videoId) {
+        int index = indexOfLikedSong(videoId);
+        if (index < 0) {
+            return error("Saved song not found.");
+        }
+        SongData removed = likedSongs.remove(index);
+        shelfStore.saveLikedSongs(likedSongs);
+        lastStatus = "Removed from wishlist: " + safe(removed.getTitle());
+        notifyStateChanged();
+        return withState(ok(lastStatus));
+    }
+
+    private SongData resolveSongForWishlist(String videoId) {
+        String safeVideoId = safe(videoId);
+        if (!safeVideoId.isBlank()) {
+            SongData cached = searchCache.get(safeVideoId);
+            if (cached != null) {
+                return cached;
+            }
+            int queueIndex = indexOfSong(safeVideoId);
+            if (queueIndex >= 0) {
+                return queue.get(queueIndex);
+            }
+            int likedIndex = indexOfLikedSong(safeVideoId);
+            if (likedIndex >= 0) {
+                return likedSongs.get(likedIndex);
+            }
+            for (SongData song : recommendations) {
+                if (safe(song.getVideoId()).equals(safeVideoId)) {
+                    return song;
+                }
+            }
+        }
+        if (currentSongIndex >= 0 && currentSongIndex < queue.size()) {
+            return queue.get(currentSongIndex);
+        }
+        return null;
     }
 
     private long getCurrentPositionMs() {

@@ -70,6 +70,7 @@
                 <VBox minHeight="8" />
 
                 <Label text="YOUR QUEUE" styleClass="section-label" />
+                <Label fx:id="desktopQueueSummaryLabel" text="Your queue is empty. Search for tracks or add local audio." styleClass="user-info-label" wrapText="true" />
                 <ListView fx:id="playlistView" styleClass="playlist-view"
                           VBox.vgrow="ALWAYS" minHeight="80" />
                 <HBox spacing="8">
@@ -77,6 +78,18 @@
                             onAction="#handleRemoveFromPlaylist" />
                     <Button text="Clear All" styleClass="control-button" HBox.hgrow="ALWAYS"
                             onAction="#handleClearPlaylist" />
+                </HBox>
+
+                <VBox minHeight="8" />
+
+                <Label text="WISHLIST" styleClass="section-label" />
+                <Label fx:id="likedSongsSummaryLabel" text="Save songs here to build a quick-access shelf across the app." styleClass="user-info-label" wrapText="true" />
+                <ListView fx:id="likedSongsView" styleClass="playlist-view" VBox.vgrow="ALWAYS" minHeight="80" />
+                <HBox spacing="8">
+                    <Button text="Save Current" styleClass="control-button" HBox.hgrow="ALWAYS"
+                            onAction="#handleToggleCurrentSongLiked" />
+                    <Button text="Remove Saved" styleClass="control-button" HBox.hgrow="ALWAYS"
+                            onAction="#handleRemoveLikedSong" />
                 </HBox>
             </VBox>
         </left>
@@ -98,9 +111,24 @@
                            styleClass="song-title-label" wrapText="true" maxWidth="460" />
                     <Label fx:id="artistLabel" text="Search for a song and click to play"
                            styleClass="artist-label" />
+                    <HBox alignment="CENTER" spacing="10">
+                        <Button text="Save to Wishlist" styleClass="icon-button"
+                                onAction="#handleToggleCurrentSongLiked" />
+                        <Button text="Add Related Songs" styleClass="icon-button"
+                                onAction="#handleAddRelatedSongs" />
+                    </HBox>
                 </VBox>
 
                 <VBox styleClass="lyrics-card" spacing="16" HBox.hgrow="ALWAYS">
+                    <VBox spacing="10">
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="RECOMMENDATIONS" styleClass="lyrics-section-label" />
+                            <Region HBox.hgrow="ALWAYS" />
+                            <Button text="Refresh Radio" styleClass="control-button" onAction="#handleAddRelatedSongs" />
+                        </HBox>
+                        <Label fx:id="desktopRecommendationSummaryLabel" text="Recommendations appear here when a track is playing." styleClass="user-info-label" wrapText="true" />
+                        <ListView fx:id="desktopRecommendationsList" styleClass="playlist-view" prefHeight="170" maxHeight="170" />
+                    </VBox>
                     <HBox alignment="CENTER_LEFT" spacing="10">
                         <Label text="LIVE LYRICS" styleClass="lyrics-section-label" />
                         <Region HBox.hgrow="ALWAYS" />

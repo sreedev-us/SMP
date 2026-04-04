@@ -118,6 +118,9 @@ public class LanSyncManager {
             httpServer.createContext("/api/queue/clear", this::handleWebQueueClearRequest);
             httpServer.createContext("/api/toggle", this::handleWebToggleRequest);
             httpServer.createContext("/api/related", this::handleWebRelatedRequest);
+            httpServer.createContext("/api/liked/toggle", this::handleWebLikedToggleRequest);
+            httpServer.createContext("/api/liked/play", this::handleWebLikedPlayRequest);
+            httpServer.createContext("/api/liked/remove", this::handleWebLikedRemoveRequest);
             httpServer.createContext("/manifest.json", ex -> serveResource(ex, "/com/musicplayer/manifest.json", "application/json"));
             httpServer.createContext("/sw.js", ex -> serveResource(ex, "/com/musicplayer/sw.js", "application/javascript"));
             httpServer.createContext("/app-icon.png", ex -> serveResource(ex, "/com/musicplayer/app-icon.png", "image/png"));
@@ -584,6 +587,18 @@ public class LanSyncManager {
 
     private void handleWebRelatedRequest(HttpExchange exchange) throws IOException {
         writeJson(exchange, webAppBridge != null ? webAppBridge.addRelated() : errorJson("Web app bridge unavailable"));
+    }
+
+    private void handleWebLikedToggleRequest(HttpExchange exchange) throws IOException {
+        writeJson(exchange, webAppBridge != null ? webAppBridge.toggleLiked(queryParam(exchange, "videoId")) : errorJson("Web app bridge unavailable"));
+    }
+
+    private void handleWebLikedPlayRequest(HttpExchange exchange) throws IOException {
+        writeJson(exchange, webAppBridge != null ? webAppBridge.playLiked(queryParam(exchange, "videoId")) : errorJson("Web app bridge unavailable"));
+    }
+
+    private void handleWebLikedRemoveRequest(HttpExchange exchange) throws IOException {
+        writeJson(exchange, webAppBridge != null ? webAppBridge.removeLiked(queryParam(exchange, "videoId")) : errorJson("Web app bridge unavailable"));
     }
 
     private void handleLyricsRequest(HttpExchange exchange) throws IOException {

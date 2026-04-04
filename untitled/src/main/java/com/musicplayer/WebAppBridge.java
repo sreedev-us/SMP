@@ -14,4 +14,7 @@ public interface WebAppBridge {
     JSONObject clearQueue();
     JSONObject setToggle(String toggle, boolean enabled);
     JSONObject addRelated();
+    JSONObject toggleLiked(String videoId);
+    JSONObject playLiked(String videoId);
+    JSONObject removeLiked(String videoId);
 }

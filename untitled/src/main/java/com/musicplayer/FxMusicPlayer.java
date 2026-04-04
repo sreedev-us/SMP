@@ -49,6 +49,7 @@ public class FxMusicPlayer {
     private final CacheManager cache;
     private final LanSyncManager lanSync = new LanSyncManager();
     private final LyricsService lyricsService = new LyricsService();
+    private final PlaylistShelfStore shelfStore = new PlaylistShelfStore();
     private Consumer<String> externalUrlOpener;
 
     // --- FXML UI Components ---
@@ -105,6 +106,11 @@ public class FxMusicPlayer {
     @FXML private ListView<SongData> mobileRecommendationsList;
     @FXML private Label mobileQueueSummaryLabel;
     @FXML private Label mobileRecommendationSummaryLabel;
+    @FXML private ListView<SongData> likedSongsView;
+    @FXML private ListView<SongData> desktopRecommendationsList;
+    @FXML private Label desktopQueueSummaryLabel;
+    @FXML private Label desktopRecommendationSummaryLabel;
+    @FXML private Label likedSongsSummaryLabel;
     private Button mobileSettingsHostButton;
     private Button mobileSettingsJoinButton;
     private TextField mobileSettingsLinkField;
@@ -113,6 +119,8 @@ public class FxMusicPlayer {
 
     // --- State ---
     private final ObservableList<SongData> playlist = FXCollections.observableArrayList();
+    private final ObservableList<SongData> likedSongs = FXCollections.observableArrayList();
+    private final ObservableList<SongData> recommendedSongs = FXCollections.observableArrayList();
     private int currentSongIndex = -1;
     private boolean isPlaying = false;
     private boolean isPaused = false;
@@ -253,6 +261,21 @@ public class FxMusicPlayer {
             public JSONObject addRelated() {
                 return addRelatedSongsFromWeb();
             }
+
+            @Override
+            public JSONObject toggleLiked(String videoId) {
+                return toggleLikedFromWeb(videoId);
+            }
+
+            @Override
+            public JSONObject playLiked(String videoId) {
+                return playLikedFromWeb(videoId);
+            }
+
+            @Override
+            public JSONObject removeLiked(String videoId) {
+                return removeLikedFromWeb(videoId);
+            }
         });
     }
 
@@ -262,20 +285,38 @@ public class FxMusicPlayer {
         playlistView.setItems(playlist);
         configureListView(playlistView);
         configureListView(searchResultsList);
+        if (likedSongsView != null) {
+            likedSongsView.setItems(likedSongs);
+            configureListView(likedSongsView);
+        }
+        if (desktopRecommendationsList != null) {
+            desktopRecommendationsList.setItems(recommendedSongs);
+            configureListView(desktopRecommendationsList);
+        }
         if (mobileHomeQueueList != null) {
             mobileHomeQueueList.setItems(playlist);
             configureListView(mobileHomeQueueList);
         }
         if (mobileRecommendationsList != null) {
+            mobileRecommendationsList.setItems(recommendedSongs);
             configureListView(mobileRecommendationsList);
         }
+        likedSongs.setAll(shelfStore.loadLikedSongs());
         playlist.addListener((ListChangeListener<SongData>) change -> {
             refreshMobileQueueSummary();
+            refreshDesktopQueueSummary();
             if (playlistView != null) {
                 playlistView.refresh();
             }
             if (mobileHomeQueueList != null) {
                 mobileHomeQueueList.refresh();
+            }
+        });
+        likedSongs.addListener((ListChangeListener<SongData>) change -> {
+            shelfStore.saveLikedSongs(likedSongs);
+            refreshLikedSongsSummary();
+            if (likedSongsView != null) {
+                likedSongsView.refresh();
             }
         });
         loadSearchHistory();
@@ -335,6 +376,8 @@ public class FxMusicPlayer {
         updatePlayPauseLabel();
         updateSessionButtonLabels();
         refreshMobileQueueSummary();
+        refreshDesktopQueueSummary();
+        refreshLikedSongsSummary();
         refreshMobileRecommendations(null);
 
         // Shuffle / Repeat / Auto Radio button initial style
@@ -450,8 +493,12 @@ public class FxMusicPlayer {
                             isPaused = false;
                             playMusic();
                         }
+                    } else if (listView == desktopRecommendationsList) {
+                        addToQueueAndPlay(cell.getItem());
                     } else if (listView == mobileRecommendationsList) {
                         addToQueueAndPlay(cell.getItem());
+                    } else if (listView == likedSongsView) {
+                        addToQueueAndPlay(cloneSong(cell.getItem()));
                     } else if (listView == playlistView && e.getClickCount() == 2) {
                         handlePlaylistDoubleClick();
                     }
@@ -1411,6 +1458,67 @@ public class FxMusicPlayer {
         return -1;
     }
 
+    private int indexOfSongInLikedSongs(SongData target) {
+        if (target == null) {
+            return -1;
+        }
+        for (int i = 0; i < likedSongs.size(); i++) {
+            SongData existing = likedSongs.get(i);
+            if (isSameSong(existing, target)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private SongData findLikedSongByVideoId(String videoId) {
+        String safeVideoId = safeText(videoId).trim();
+        if (safeVideoId.isBlank()) {
+            return null;
+        }
+        for (SongData song : likedSongs) {
+            if (safeVideoId.equals(safeText(song.getVideoId()).trim())) {
+                return song;
+            }
+        }
+        return null;
+    }
+
+    private boolean isSongLiked(SongData song) {
+        return indexOfSongInLikedSongs(song) >= 0;
+    }
+
+    @FXML
+    public void handleToggleCurrentSongLiked() {
+        SongData currentSong = currentSongIndex >= 0 && currentSongIndex < playlist.size() ? playlist.get(currentSongIndex) : null;
+        if (currentSong == null) {
+            updateStatus("Play a song first to save it to your wishlist.");
+            return;
+        }
+
+        int existingIndex = indexOfSongInLikedSongs(currentSong);
+        if (existingIndex >= 0) {
+            likedSongs.remove(existingIndex);
+            updateStatus("Removed from wishlist: " + currentSong.getTitle());
+        } else {
+            likedSongs.add(0, cloneSong(currentSong));
+            updateStatus("Saved to wishlist: " + currentSong.getTitle());
+        }
+        lanSync.notifyWebStateChanged();
+    }
+
+    @FXML
+    public void handleRemoveLikedSong() {
+        SongData selected = likedSongsView != null ? likedSongsView.getSelectionModel().getSelectedItem() : null;
+        if (selected == null) {
+            updateStatus("Select a saved song to remove it.");
+            return;
+        }
+        likedSongs.removeIf(song -> isSameSong(song, selected));
+        updateStatus("Removed from wishlist: " + selected.getTitle());
+        lanSync.notifyWebStateChanged();
+    }
+
     private boolean isSameSong(SongData a, SongData b) {
         if (a == null || b == null) {
             return false;
@@ -1438,6 +1546,19 @@ public class FxMusicPlayer {
         copy.setGuestPlaybackBlocked(original.isGuestPlaybackBlocked());
         copy.setPlaybackIssue(original.getPlaybackIssue());
         return copy;
+    }
+
+    private JSONObject toWebSongJson(SongData song, boolean current, int index) {
+        JSONObject item = new JSONObject();
+        item.put("index", index);
+        item.put("videoId", safeText(song.getVideoId()));
+        item.put("title", safeText(song.getTitle()));
+        item.put("channel", safeText(song.getChannel()));
+        item.put("thumbnailUrl", safeText(song.getThumbnailUrl()));
+        item.put("type", safeText(song.getType()));
+        item.put("current", current);
+        item.put("liked", isSongLiked(song));
+        return item;
     }
 
     private JSONObject okJson(String message) {
@@ -1474,26 +1595,26 @@ public class FxMusicPlayer {
                 JSONArray queue = new JSONArray();
                 for (int i = 0; i < playlist.size(); i++) {
                     SongData song = playlist.get(i);
-                    JSONObject item = new JSONObject();
-                    item.put("index", i);
-                    item.put("videoId", safeText(song.getVideoId()));
-                    item.put("title", safeText(song.getTitle()));
-                    item.put("channel", safeText(song.getChannel()));
-                    item.put("thumbnailUrl", safeText(song.getThumbnailUrl()));
-                    item.put("type", safeText(song.getType()));
-                    item.put("current", i == currentSongIndex);
-                    queue.put(item);
+                    queue.put(toWebSongJson(song, i == currentSongIndex, i));
                 }
                 state.put("queue", queue);
 
+                JSONArray liked = new JSONArray();
+                for (int i = 0; i < likedSongs.size(); i++) {
+                    liked.put(toWebSongJson(likedSongs.get(i), false, i));
+                }
+                state.put("likedSongs", liked);
+
+                JSONArray recommendations = new JSONArray();
+                for (int i = 0; i < recommendedSongs.size(); i++) {
+                    recommendations.put(toWebSongJson(recommendedSongs.get(i), false, i));
+                }
+                state.put("recommendations", recommendations);
+
                 SongData current = (currentSongIndex >= 0 && currentSongIndex < playlist.size()) ? playlist.get(currentSongIndex) : null;
                 if (current != null) {
-                    JSONObject currentJson = new JSONObject();
-                    currentJson.put("videoId", safeText(current.getVideoId()));
-                    currentJson.put("title", safeText(current.getTitle()));
-                    currentJson.put("channel", safeText(current.getChannel()));
-                    currentJson.put("thumbnailUrl", safeText(current.getThumbnailUrl()));
-                    currentJson.put("type", safeText(current.getType()));
+                    JSONObject currentJson = toWebSongJson(current, true, currentSongIndex);
+                    currentJson.put("liked", isSongLiked(current));
                     state.put("currentSong", currentJson);
                 } else {
                     state.put("currentSong", JSONObject.NULL);
@@ -1718,6 +1839,93 @@ public class FxMusicPlayer {
         return ref.get().put("state", buildWebStateSnapshot());
     }
 
+    private JSONObject toggleLikedFromWeb(String videoId) {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<JSONObject> ref = new AtomicReference<>(errorJson("Could not update wishlist."));
+        Platform.runLater(() -> {
+            try {
+                SongData target = null;
+                if (!safeText(videoId).isBlank()) {
+                    target = webSearchIndex.get(videoId);
+                    if (target == null) {
+                        target = findLikedSongByVideoId(videoId);
+                    }
+                    if (target == null) {
+                        for (SongData song : playlist) {
+                            if (safeText(song.getVideoId()).equals(safeText(videoId))) {
+                                target = song;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (target == null && currentSongIndex >= 0 && currentSongIndex < playlist.size()) {
+                    target = playlist.get(currentSongIndex);
+                }
+                if (target == null) {
+                    ref.set(errorJson("No song available to save."));
+                    return;
+                }
+                int existingIndex = indexOfSongInLikedSongs(target);
+                if (existingIndex >= 0) {
+                    likedSongs.remove(existingIndex);
+                    updateStatus("Removed from wishlist: " + target.getTitle());
+                } else {
+                    likedSongs.add(0, cloneSong(target));
+                    updateStatus("Saved to wishlist: " + target.getTitle());
+                }
+                lanSync.notifyWebStateChanged();
+                ref.set(okJson("Wishlist updated."));
+            } finally {
+                latch.countDown();
+            }
+        });
+        awaitLatch(latch);
+        return ref.get().put("state", buildWebStateSnapshot());
+    }
+
+    private JSONObject playLikedFromWeb(String videoId) {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<JSONObject> ref = new AtomicReference<>(errorJson("Could not play saved song."));
+        Platform.runLater(() -> {
+            try {
+                SongData likedSong = findLikedSongByVideoId(videoId);
+                if (likedSong == null) {
+                    ref.set(errorJson("Saved song not found."));
+                    return;
+                }
+                addToQueueAndPlay(cloneSong(likedSong));
+                ref.set(okJson("Playing saved song."));
+            } finally {
+                latch.countDown();
+            }
+        });
+        awaitLatch(latch);
+        return ref.get().put("state", buildWebStateSnapshot());
+    }
+
+    private JSONObject removeLikedFromWeb(String videoId) {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<JSONObject> ref = new AtomicReference<>(errorJson("Could not remove saved song."));
+        Platform.runLater(() -> {
+            try {
+                SongData likedSong = findLikedSongByVideoId(videoId);
+                if (likedSong == null) {
+                    ref.set(errorJson("Saved song not found."));
+                    return;
+                }
+                likedSongs.removeIf(song -> isSameSong(song, likedSong));
+                updateStatus("Removed from wishlist: " + likedSong.getTitle());
+                lanSync.notifyWebStateChanged();
+                ref.set(okJson("Removed saved song."));
+            } finally {
+                latch.countDown();
+            }
+        });
+        awaitLatch(latch);
+        return ref.get().put("state", buildWebStateSnapshot());
+    }
+
     private void awaitLatch(CountDownLatch latch) {
         try {
             latch.await();
@@ -1919,8 +2127,34 @@ public class FxMusicPlayer {
         mobileQueueSummaryLabel.setText(summary);
     }
 
+    private void refreshDesktopQueueSummary() {
+        if (desktopQueueSummaryLabel == null) {
+            return;
+        }
+        if (playlist.isEmpty()) {
+            desktopQueueSummaryLabel.setText("Your queue is empty. Search for tracks or add local audio.");
+            return;
+        }
+        String summary = playlist.size() + " track" + (playlist.size() == 1 ? "" : "s") + " ready";
+        if (currentSongIndex >= 0 && currentSongIndex < playlist.size()) {
+            summary += " • Playing " + playlist.get(currentSongIndex).getTitle();
+        }
+        desktopQueueSummaryLabel.setText(summary);
+    }
+
+    private void refreshLikedSongsSummary() {
+        if (likedSongsSummaryLabel == null) {
+            return;
+        }
+        if (likedSongs.isEmpty()) {
+            likedSongsSummaryLabel.setText("Save songs here to build a quick-access shelf across the app.");
+        } else {
+            likedSongsSummaryLabel.setText(likedSongs.size() + " saved song" + (likedSongs.size() == 1 ? "" : "s") + " in your wishlist.");
+        }
+    }
+
     private void refreshMobileRecommendations(SongData baseSong) {
-        if (mobileRecommendationsList == null || mobileRecommendationSummaryLabel == null) {
+        if (mobileRecommendationsList == null && desktopRecommendationSummaryLabel == null) {
             return;
         }
 
@@ -1931,13 +2165,23 @@ public class FxMusicPlayer {
         }
 
         if (pivot == null) {
-            mobileRecommendationsList.setItems(FXCollections.observableArrayList());
-            mobileRecommendationSummaryLabel.setText("Play a song to unlock related recommendations.");
+            recommendedSongs.setAll(List.of());
+            if (mobileRecommendationSummaryLabel != null) {
+                mobileRecommendationSummaryLabel.setText("Play a song to unlock related recommendations.");
+            }
+            if (desktopRecommendationSummaryLabel != null) {
+                desktopRecommendationSummaryLabel.setText("Recommendations appear here when a track is playing.");
+            }
             return;
         }
 
         SongData finalPivot = pivot;
-        mobileRecommendationSummaryLabel.setText("Finding songs related to " + finalPivot.getTitle() + "...");
+        if (mobileRecommendationSummaryLabel != null) {
+            mobileRecommendationSummaryLabel.setText("Finding songs related to " + finalPivot.getTitle() + "...");
+        }
+        if (desktopRecommendationSummaryLabel != null) {
+            desktopRecommendationSummaryLabel.setText("Finding songs related to " + finalPivot.getTitle() + "...");
+        }
         new Thread(() -> {
             List<SongData> recommendations = new ArrayList<>();
 
@@ -1974,11 +2218,21 @@ public class FxMusicPlayer {
                 if (requestId != recommendationRequestSequence) {
                     return;
                 }
-                mobileRecommendationsList.setItems(FXCollections.observableArrayList(recommendations));
+                recommendedSongs.setAll(recommendations);
                 if (recommendations.isEmpty()) {
-                    mobileRecommendationSummaryLabel.setText("No related songs found yet. Try a different search or play another track.");
+                    if (mobileRecommendationSummaryLabel != null) {
+                        mobileRecommendationSummaryLabel.setText("No related songs found yet. Try a different search or play another track.");
+                    }
+                    if (desktopRecommendationSummaryLabel != null) {
+                        desktopRecommendationSummaryLabel.setText("No fresh recommendations yet. Try another song or another search.");
+                    }
                 } else {
-                    mobileRecommendationSummaryLabel.setText("Tap any result to play it instantly or fold it into the queue.");
+                    if (mobileRecommendationSummaryLabel != null) {
+                        mobileRecommendationSummaryLabel.setText("Tap any result to play it instantly or fold it into the queue.");
+                    }
+                    if (desktopRecommendationSummaryLabel != null) {
+                        desktopRecommendationSummaryLabel.setText("Tap a recommendation to play it or let Auto Radio continue from here.");
+                    }
                 }
             });
         }, "mobile-recommendations").start();

@@ -434,10 +434,19 @@
                 <h2>Queue</h2>
                 <div class="button-row">
                     <button class="secondary" id="relatedButton">Add Related Songs</button>
+                    <button class="secondary" id="saveCurrentButton">Save Current</button>
                     <button class="danger" id="clearQueueButton">Clear Queue</button>
                 </div>
                 <div class="list" id="queueList">
                     <div class="card status">Queue is empty.</div>
+                </div>
+            </article>
+
+            <article class="panel section">
+                <h2>Wishlist</h2>
+                <div class="hint" id="likedSummary">Save songs here to build your personal shelf.</div>
+                <div class="list" id="likedList">
+                    <div class="card status">No saved songs yet.</div>
                 </div>
             </article>
         </div>
@@ -455,6 +464,7 @@
                 <div class="chips">
                     <div class="chip" id="playbackChip">Idle</div>
                     <div class="chip" id="lyricsChip">Lyrics waiting</div>
+                    <div class="chip" id="wishlistChip">Wishlist empty</div>
                 </div>
                 <div class="hero-note" id="heroNote">Your phone-friendly player keeps search, queue, auto radio, and synced lyrics within thumb reach.</div>
 
@@ -481,6 +491,17 @@
         </div>
 
         <div class="column">
+            <article class="panel section">
+                <div class="section-header">
+                    <h2>Recommendations</h2>
+                    <button class="secondary" id="refreshRecommendationsButton">Refresh</button>
+                </div>
+                <div class="hint" id="recommendationSummary">Play a song to unlock related recommendations.</div>
+                <div class="list" id="recommendationsList">
+                    <div class="card status">Recommendations will appear here.</div>
+                </div>
+            </article>
+
             <article class="panel section">
                 <h2>Live Lyrics</h2>
                 <div class="hint" id="lyricsSource">Waiting for a track...</div>
@@ -511,12 +532,19 @@
         searchResults: document.getElementById('searchResults'),
         queueList: document.getElementById('queueList'),
         relatedButton: document.getElementById('relatedButton'),
+        saveCurrentButton: document.getElementById('saveCurrentButton'),
         clearQueueButton: document.getElementById('clearQueueButton'),
+        likedSummary: document.getElementById('likedSummary'),
+        likedList: document.getElementById('likedList'),
         trackTitle: document.getElementById('trackTitle'),
         trackArtist: document.getElementById('trackArtist'),
         heroNote: document.getElementById('heroNote'),
         playbackChip: document.getElementById('playbackChip'),
         lyricsChip: document.getElementById('lyricsChip'),
+        wishlistChip: document.getElementById('wishlistChip'),
+        recommendationSummary: document.getElementById('recommendationSummary'),
+        recommendationsList: document.getElementById('recommendationsList'),
+        refreshRecommendationsButton: document.getElementById('refreshRecommendationsButton'),
         prevButton: document.getElementById('prevButton'),
         playPauseButton: document.getElementById('playPauseButton'),
         nextButton: document.getElementById('nextButton'),
@@ -591,6 +619,48 @@
         `).join('');
     }
 
+    function renderLikedSongs(items) {
+        if (!items || !items.length) {
+            els.likedSummary.textContent = 'No saved songs yet.';
+            els.wishlistChip.textContent = 'Wishlist empty';
+            els.likedList.innerHTML = '<div class="card status">Save songs from search, queue, or the current player.</div>';
+            return;
+        }
+
+        els.likedSummary.textContent = `${items.length} saved song${items.length === 1 ? '' : 's'} ready to replay.`;
+        els.wishlistChip.textContent = `${items.length} saved`;
+        els.likedList.innerHTML = items.map(item => `
+            <div class="card">
+                <div class="song-title">${escapeHtml(item.title || 'Untitled')}</div>
+                <div class="song-meta">${escapeHtml(item.channel || 'Unknown Artist')}</div>
+                <div class="row-actions">
+                    <button onclick="playLikedSong('${escapeHtml(item.videoId)}')">Play</button>
+                    <button class="secondary" onclick="removeLikedSong('${escapeHtml(item.videoId)}')">Remove</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderRecommendations(items) {
+        if (!items || !items.length) {
+            els.recommendationSummary.textContent = 'Play a song to unlock related recommendations.';
+            els.recommendationsList.innerHTML = '<div class="card status">Recommendations will appear here.</div>';
+            return;
+        }
+
+        els.recommendationSummary.textContent = 'Tap a recommendation to play it or fold it into the queue.';
+        els.recommendationsList.innerHTML = items.map(item => `
+            <div class="card">
+                <div class="song-title">${escapeHtml(item.title || 'Untitled')}</div>
+                <div class="song-meta">${escapeHtml(item.channel || 'Unknown Artist')}</div>
+                <div class="row-actions">
+                    <button onclick="queueSong('${escapeHtml(item.videoId)}', true)">Play Now</button>
+                    <button class="secondary" onclick="toggleLiked('${escapeHtml(item.videoId)}')">${item.liked ? 'Unsave' : 'Save'}</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
     function renderState(state) {
         if (!state || state.ok === false) {
             return;
@@ -634,6 +704,8 @@
         }
 
         renderQueue(state.queue || []);
+        renderLikedSongs(state.likedSongs || []);
+        renderRecommendations(state.recommendations || []);
     }
 
     function renderLyrics(payload) {
@@ -750,6 +822,25 @@
         setTimeout(loadState, 1200);
     }
 
+    async function toggleLiked(videoId = '') {
+        const payload = await fetchJson(`/api/liked/toggle?videoId=${encodeURIComponent(videoId)}`, { method: 'POST' });
+        els.statusText.textContent = payload.message || 'Wishlist updated.';
+        if (payload.state) renderState(payload.state);
+    }
+
+    async function playLikedSong(videoId) {
+        const payload = await fetchJson(`/api/liked/play?videoId=${encodeURIComponent(videoId)}`, { method: 'POST' });
+        els.statusText.textContent = payload.message || 'Playing saved song.';
+        if (payload.state) renderState(payload.state);
+        await loadLyrics();
+    }
+
+    async function removeLikedSong(videoId) {
+        const payload = await fetchJson(`/api/liked/remove?videoId=${encodeURIComponent(videoId)}`, { method: 'POST' });
+        els.statusText.textContent = payload.message || 'Saved song removed.';
+        if (payload.state) renderState(payload.state);
+    }
+
     function attemptPlayback() {
         if (appState.pendingPlayAttempt || !els.audioPlayer.src) {
             return;
@@ -845,6 +936,8 @@
     });
     els.clearQueueButton.addEventListener('click', clearQueue);
     els.relatedButton.addEventListener('click', addRelated);
+    els.saveCurrentButton.addEventListener('click', () => toggleLiked(''));
+    els.refreshRecommendationsButton.addEventListener('click', addRelated);
     els.prevButton.addEventListener('click', () => sendPlayback(`/api/prev?positionMs=${Math.max(0, Math.floor(els.audioPlayer.currentTime * 1000))}`));
     els.playPauseButton.addEventListener('click', () => sendPlayback(`/api/playpause?positionMs=${Math.max(0, Math.floor(els.audioPlayer.currentTime * 1000))}`));
     els.nextButton.addEventListener('click', () => sendPlayback(`/api/next?positionMs=${Math.max(0, Math.floor(els.audioPlayer.currentTime * 1000))}`));
@@ -860,6 +953,9 @@
     window.queueSong = queueSong;
     window.playQueueIndex = playQueueIndex;
     window.removeQueueIndex = removeQueueIndex;
+    window.playLikedSong = playLikedSong;
+    window.removeLikedSong = removeLikedSong;
+    window.toggleLiked = toggleLiked;
 </script>
 </body>
 </html>

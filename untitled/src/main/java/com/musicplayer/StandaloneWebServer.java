@@ -39,6 +39,9 @@ public class StandaloneWebServer {
         this.server.createContext("/api/queue/clear", ex -> writeJson(ex, service.clearQueue()));
         this.server.createContext("/api/toggle", ex -> writeJson(ex, service.setToggle(queryParam(ex, "name"), boolParam(ex, "enabled"))));
         this.server.createContext("/api/related", ex -> writeSafeJson(ex, service::addRelatedSongs));
+        this.server.createContext("/api/liked/toggle", ex -> writeJson(ex, service.toggleLiked(queryParam(ex, "videoId"))));
+        this.server.createContext("/api/liked/play", ex -> writeJson(ex, service.playLiked(queryParam(ex, "videoId"))));
+        this.server.createContext("/api/liked/remove", ex -> writeJson(ex, service.removeLiked(queryParam(ex, "videoId"))));
         this.server.createContext("/api/playpause", ex -> writeJson(ex, service.togglePlayPause(longParam(ex, "positionMs"))));
         this.server.createContext("/api/next", ex -> writeJson(ex, service.next(longParam(ex, "positionMs"))));
         this.server.createContext("/api/prev", ex -> writeJson(ex, service.previous(longParam(ex, "positionMs"))));
