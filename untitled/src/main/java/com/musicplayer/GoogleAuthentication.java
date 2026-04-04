@@ -1,6 +1,7 @@
 package com.musicplayer;
 
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
@@ -10,18 +11,19 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.prefs.Preferences;
-
 import org.json.JSONObject;
 
 public class GoogleAuthentication implements AuthSystem {
@@ -31,7 +33,6 @@ public class GoogleAuthentication implements AuthSystem {
     private static final File DATA_STORE_DIR = new File(
             System.getProperty("user.home"), ".harmony-pro-credentials");
 
-    // Scopes: Get user's email/profile AND access YouTube
     private static final List<String> SCOPES = List.of(
             "https://www.googleapis.com/auth/userinfo.profile",
             "https://www.googleapis.com/auth/userinfo.email",
@@ -62,68 +63,37 @@ public class GoogleAuthentication implements AuthSystem {
         loadCurrentUser();
     }
 
+    private InputStream getCredentialsStream() {
+        String googleCredentials = System.getenv("GOOGLE_CREDENTIALS");
+        if (googleCredentials != null && !googleCredentials.isBlank()) {
+            return new ByteArrayInputStream(googleCredentials.getBytes(StandardCharsets.UTF_8));
+        }
+        return GoogleAuthentication.class.getResourceAsStream(CLIENT_SECRETS_RESOURCE);
+    }
+
     private void loadCurrentUser() {
         currentUser = authPrefs.get("currentUser", null);
         currentEmail = authPrefs.get("currentEmail", null);
+        if (currentEmail == null) {
+            return;
+        }
 
-        // If we have a user stored, try to load their credential
-        if (currentEmail != null) {
-            try {
-                InputStream is = GoogleAuthentication.class.getResourceAsStream(CLIENT_SECRETS_RESOURCE);
-                if (is == null)
-                    throw new RuntimeException("credentials.json not found on classpath");
-                GoogleClientSecrets secrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(is));
-                GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                        HTTP_TRANSPORT, JSON_FACTORY, secrets, SCOPES)
-                        .setDataStoreFactory(dataStoreFactory)
-                        .setAccessType("offline").build();
-
-                // "user" is the generic ID for a single-user desktop app
-                this.credential = flow.loadCredential("user");
-
-            } catch (Exception e) {
-                System.err.println("Could not load stored credential: " + e.getMessage());
-                this.credential = null;
-            }
+        try {
+            GoogleAuthorizationCodeFlow flow = buildAuthorizationFlow();
+            this.credential = flow.loadCredential("user");
+        } catch (Exception e) {
+            System.err.println("Could not load stored credential: " + e.getMessage());
+            clearStoredCredentialState();
         }
     }
 
-    /**
-     * Executes the real Google OAuth 2.0 flow.
-     * This will open a web browser for the user to sign in.
-     */
     @Override
     public boolean googleLogin() {
         try {
-            InputStream is = GoogleAuthentication.class.getResourceAsStream(CLIENT_SECRETS_RESOURCE);
-            if (is == null) {
-                throw new RuntimeException(
-                        "credentials.json not found on classpath (" + CLIENT_SECRETS_RESOURCE + "). "
-                                + "Make sure it is in src/main/resources/com/musicplayer/");
-            }
-            GoogleClientSecrets secrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(is));
-
-            GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                    HTTP_TRANSPORT, JSON_FACTORY, secrets, SCOPES)
-                    .setDataStoreFactory(dataStoreFactory)
-                    .setAccessType("offline").build();
-
-            // Port 0 = let the OS pick any available port automatically.
-            // Make sure your Google Cloud "Desktop app" credentials have
-            // "http://localhost" as an allowed redirect URI (no port needed).
-            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(0).build();
-            this.credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-
-            if (this.credential == null) {
+            GoogleAuthorizationCodeFlow flow = buildAuthorizationFlow();
+            this.credential = authorizeWithFreshFallback(flow);
+            if (this.credential == null || !ensureFreshAccessToken()) {
                 return false;
-            }
-
-            // --- Login successful — fetch user info via plain HTTPS ---
-            // Ensure we have a fresh token (refresh if expired)
-            if (credential.getAccessToken() == null
-                    || (credential.getExpiresInSeconds() != null && credential.getExpiresInSeconds() < 30)) {
-                System.out.println("Refreshing OAuth2 token...");
-                credential.refreshToken();
             }
 
             String accessToken = credential.getAccessToken();
@@ -134,13 +104,11 @@ public class GoogleAuthentication implements AuthSystem {
 
             int code = conn.getResponseCode();
             if (code != 200) {
-                // If 401, the stored credential might be totally invalid (revoked)
                 if (code == 401) {
                     System.err.println("401 Unauthorized at UserInfo. Clearing credentials...");
-                    logout(); // Wipe the bad state
+                    clearStoredCredentialState();
                 }
 
-                // Read error stream for debugging
                 InputStream es = conn.getErrorStream();
                 if (es != null) {
                     try (Scanner sc = new Scanner(es)) {
@@ -161,20 +129,91 @@ public class GoogleAuthentication implements AuthSystem {
             JSONObject userInfoJson = new JSONObject(json);
             this.currentUser = userInfoJson.optString("name", "Unknown User");
             this.currentEmail = userInfoJson.optString("email", "");
-
-            // Save user to preferences
             saveUsers();
             return true;
-
         } catch (Exception e) {
+            if (isRevokedTokenError(e)) {
+                System.err.println("Google login detected a revoked or expired token. Clearing cached credentials.");
+                clearStoredCredentialState();
+            }
             System.err.println("Google login error: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
     }
 
+    private GoogleAuthorizationCodeFlow buildAuthorizationFlow() throws IOException {
+        InputStream is = getCredentialsStream();
+        if (is == null) {
+            throw new RuntimeException(
+                    "credentials.json not found on classpath (" + CLIENT_SECRETS_RESOURCE
+                            + ") or GOOGLE_CREDENTIALS not set. Make sure it is in src/main/resources/com/musicplayer/");
+        }
+        GoogleClientSecrets secrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(is));
+        return new GoogleAuthorizationCodeFlow.Builder(
+                HTTP_TRANSPORT, JSON_FACTORY, secrets, SCOPES)
+                .setDataStoreFactory(dataStoreFactory)
+                .setAccessType("offline")
+                .build();
+    }
+
+    private Credential authorizeWithFreshFallback(GoogleAuthorizationCodeFlow flow) throws IOException {
+        AuthorizationCodeInstalledApp app = new AuthorizationCodeInstalledApp(
+                flow, new LocalServerReceiver.Builder().setPort(0).build());
+        try {
+            return app.authorize("user");
+        } catch (Exception ex) {
+            if (!isRevokedTokenError(ex)) {
+                throw ex;
+            }
+            System.err.println("Stored Google token is invalid. Retrying with a fresh sign-in...");
+            clearStoredCredentialState();
+            return app.authorize("user");
+        }
+    }
+
+    private boolean ensureFreshAccessToken() throws IOException {
+        if (credential == null) {
+            return false;
+        }
+        if (credential.getAccessToken() == null
+                || (credential.getExpiresInSeconds() != null && credential.getExpiresInSeconds() < 30)) {
+            System.out.println("Refreshing OAuth2 token...");
+            try {
+                if (!credential.refreshToken()) {
+                    clearStoredCredentialState();
+                    return false;
+                }
+            } catch (TokenResponseException ex) {
+                if (!isRevokedTokenError(ex)) {
+                    throw ex;
+                }
+                System.err.println("Stored Google refresh token expired or revoked. Starting a fresh sign-in...");
+                clearStoredCredentialState();
+                this.credential = authorizeWithFreshFallback(buildAuthorizationFlow());
+                return this.credential != null && ensureFreshAccessToken();
+            }
+        }
+        return credential.getAccessToken() != null;
+    }
+
+    private boolean isRevokedTokenError(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof TokenResponseException tokenError) {
+                String message = tokenError.getMessage() == null ? "" : tokenError.getMessage().toLowerCase();
+                String details = tokenError.getDetails() == null ? "" : tokenError.getDetails().toPrettyString().toLowerCase();
+                if (message.contains("invalid_grant") || message.contains("expired or revoked")
+                        || details.contains("invalid_grant") || details.contains("expired or revoked")) {
+                    return true;
+                }
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
     private void saveUsers() {
-        // Save current user to preferences
         if (currentUser != null) {
             authPrefs.put("currentUser", currentUser);
             authPrefs.put("currentEmail", currentEmail);
@@ -189,23 +228,28 @@ public class GoogleAuthentication implements AuthSystem {
         }
     }
 
-    @Override
-    public void logout() {
+    private void clearStoredCredentialState() {
         this.currentUser = null;
         this.currentEmail = null;
         this.credential = null;
-        saveUsers(); // Clears prefs
-        // Delete the stored credential file
+        saveUsers();
         try {
-            new File(DATA_STORE_DIR, "StoredCredential").delete();
+            File storedCredential = new File(DATA_STORE_DIR, "StoredCredential");
+            if (storedCredential.exists()) {
+                storedCredential.delete();
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Failed to clear stored Google credential: " + e.getMessage());
         }
     }
 
     @Override
+    public void logout() {
+        clearStoredCredentialState();
+    }
+
+    @Override
     public Map<String, Object> getCurrentUserData() {
-        // This method is now less important, but we can fill it
         Map<String, Object> userData = new java.util.HashMap<>();
         userData.put("name", currentUser);
         userData.put("email", currentEmail);
@@ -220,18 +264,18 @@ public class GoogleAuthentication implements AuthSystem {
 
     @Override
     public boolean isLoggedIn() {
-        // Real login means we have a valid credential
         return this.credential != null && this.currentUser != null;
     }
 
     @Override
     public boolean hasCredentials() {
+        String googleCredentials = System.getenv("GOOGLE_CREDENTIALS");
+        if (googleCredentials != null && !googleCredentials.isBlank()) {
+            return true;
+        }
         return GoogleAuthentication.class.getResourceAsStream(CLIENT_SECRETS_RESOURCE) != null;
     }
 
-    /**
-     * Returns the active OAuth 2.0 credential.
-     */
     @Override
     public Credential getCredential() {
         return this.credential;

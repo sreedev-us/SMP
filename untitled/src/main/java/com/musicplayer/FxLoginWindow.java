@@ -102,7 +102,7 @@ public class FxLoginWindow extends Application {
                     activeAuth = auth;
                     launchMainPlayer(auth.getCurrentUser());
                 } else {
-                    statusLabel.setText("Google login failed. Check credentials.json.");
+                    statusLabel.setText("Google login failed. If your browser sign-in completed, try again to refresh an expired token.");
                 }
             });
         }).start();
