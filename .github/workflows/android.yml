@@ -37,8 +37,8 @@ jobs:
       - name: Set up Android SDK components
         run: |
           echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME \
-            "platforms;android-35" \
-            "build-tools;35.0.0" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
             "platform-tools" \
             "extras;android;m2repository" \
             "extras;google;m2repository"
