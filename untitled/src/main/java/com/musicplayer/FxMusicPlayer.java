@@ -58,6 +58,7 @@ public class FxMusicPlayer {
     @FXML private VBox searchHistorySection;
     @FXML private FlowPane searchHistoryContainer;
     @FXML private ListView<SongData> searchResultsList;
+    @FXML private ListView<String> searchSuggestionsList;
     @FXML private ListView<SongData> playlistView;
     @FXML private ImageView albumArtView;
     @FXML private Label songTitleLabel;
@@ -121,6 +122,7 @@ public class FxMusicPlayer {
     private final ObservableList<SongData> playlist = FXCollections.observableArrayList();
     private final ObservableList<SongData> likedSongs = FXCollections.observableArrayList();
     private final ObservableList<SongData> recommendedSongs = FXCollections.observableArrayList();
+    private final ObservableList<String> searchSuggestions = FXCollections.observableArrayList();
     private int currentSongIndex = -1;
     private boolean isPlaying = false;
     private boolean isPaused = false;
@@ -143,7 +145,9 @@ public class FxMusicPlayer {
     private long recommendationRequestSequence = 0;
     private long playbackRequestSequence = 0;
     private long activePlaybackRequestId = 0;
+    private long searchSuggestionRequestSequence = 0;
     private boolean mobileLibraryMode = false;
+    private final Timeline searchSuggestionDebounce = new Timeline();
 
     public FxMusicPlayer(AuthSystem auth, SettingsManager settings) {
         this.auth = auth;
@@ -158,8 +162,8 @@ public class FxMusicPlayer {
             }
         }));
 
-        // Auto-advance when a track ends
-        this.audioPlayer.setOnEndOfMedia(() -> Platform.runLater(this::handleNext));
+        // Auto-advance only when the active track really reaches the end.
+        this.audioPlayer.setOnEndOfMedia(() -> Platform.runLater(this::handleNaturalTrackEnd));
 
         if (auth != null && auth.isLoggedIn()) {
             try {
@@ -287,6 +291,18 @@ public class FxMusicPlayer {
         playlistView.setItems(playlist);
         configureListView(playlistView);
         configureListView(searchResultsList);
+        if (searchSuggestionsList != null) {
+            searchSuggestionsList.setItems(searchSuggestions);
+            searchSuggestionsList.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 1) {
+                    String suggestion = searchSuggestionsList.getSelectionModel().getSelectedItem();
+                    if (suggestion != null && !suggestion.isBlank()) {
+                        searchField.setText(suggestion);
+                        performSearch();
+                    }
+                }
+            });
+        }
         if (likedSongsView != null) {
             likedSongsView.setItems(likedSongs);
             configureListView(likedSongsView);
@@ -387,20 +403,21 @@ public class FxMusicPlayer {
         updateToggleButtonStyle(repeatButton, repeatEnabled);
         updateToggleButtonStyle(autoRadioButton, autoRadioEnabled);
 
-        // Single-click on a search result adds it to the queue and plays it immediately
-        searchResultsList.setOnMouseClicked(e -> {
-            if (e.getClickCount() == 1) {
-                SongData song = searchResultsList.getSelectionModel().getSelectedItem();
-                if (song != null) addToQueueAndPlay(song);
-            }
-        });
-
         if (mobilePlayerDock != null) {
             mobilePlayerDock.setOnMouseClicked(this::handleMobileDockClick);
         }
 
         if (searchField != null) {
             searchField.setOnAction(event -> performSearch());
+            searchSuggestionDebounce.getKeyFrames().setAll(
+                new KeyFrame(Duration.millis(260), event -> triggerSearchSuggestions())
+            );
+            searchField.textProperty().addListener((obs, oldValue, newValue) -> {
+                if (AppPlatform.isMobile() && !mobileSearchOverlay.isVisible()) {
+                    return;
+                }
+                searchSuggestionDebounce.playFromStart();
+            });
         }
 
         // Setup responsive layout listener (runs after scene is created)
@@ -742,6 +759,16 @@ public class FxMusicPlayer {
                         updateStatus("Now Playing: " + currentSong.getTitle());
             loadLyricsForSong(currentSong);
         }
+    }
+
+    private void handleNaturalTrackEnd() {
+        long duration = audioPlayer.getDuration();
+        long position = audioPlayer.getCurrentPosition();
+        if (duration > 0 && position + 2500 < duration) {
+            System.out.println("Ignoring premature end-of-media callback at " + position + " / " + duration);
+            return;
+        }
+        handleNext();
     }
 
     private void pauseMusic() {
@@ -1316,6 +1343,7 @@ public class FxMusicPlayer {
         if (query.isEmpty()) { updateStatus("Please enter a search query."); return; }
         if (youtubeService == null) { updateStatus("YouTube Service not connected."); return; }
         setMobileLibraryMode(false);
+        clearSearchSuggestions();
 
         rememberSearchQuery(query);
 
@@ -2040,6 +2068,64 @@ public class FxMusicPlayer {
                 }
             }
         }
+    }
+
+    private void triggerSearchSuggestions() {
+        if (searchField == null) {
+            return;
+        }
+
+        String query = searchField.getText() == null ? "" : searchField.getText().trim();
+        if (query.length() < 2 || youtubeService == null) {
+            clearSearchSuggestions();
+            return;
+        }
+
+        long requestId = ++searchSuggestionRequestSequence;
+        new Thread(() -> {
+            try {
+                List<YouTubeVideo> videos = youtubeService.searchVideos(query, 6);
+                List<String> suggestions = new ArrayList<>();
+                for (YouTubeVideo video : videos) {
+                    String title = video.getTitle() == null ? "" : video.getTitle().trim();
+                    if (title.isBlank()) {
+                        continue;
+                    }
+                    boolean alreadyPresent = suggestions.stream().anyMatch(existing -> existing.equalsIgnoreCase(title));
+                    if (!alreadyPresent) {
+                        suggestions.add(title);
+                    }
+                }
+
+                Platform.runLater(() -> {
+                    if (requestId != searchSuggestionRequestSequence) {
+                        return;
+                    }
+                    searchSuggestions.setAll(suggestions);
+                    updateSearchSuggestionVisibility();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    if (requestId == searchSuggestionRequestSequence) {
+                        clearSearchSuggestions();
+                    }
+                });
+            }
+        }, "search-suggestions").start();
+    }
+
+    private void clearSearchSuggestions() {
+        searchSuggestions.clear();
+        updateSearchSuggestionVisibility();
+    }
+
+    private void updateSearchSuggestionVisibility() {
+        if (searchSuggestionsList == null) {
+            return;
+        }
+        boolean visible = !searchSuggestions.isEmpty();
+        searchSuggestionsList.setVisible(visible);
+        searchSuggestionsList.setManaged(visible);
     }
 
     @FXML

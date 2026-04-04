@@ -328,6 +328,39 @@
     -fx-alignment: top-center;
 }
 
+.desktop-tab-shell {
+    -fx-background-color: transparent;
+    -fx-tab-min-width: 120;
+}
+
+.desktop-tab-shell > .tab-header-area {
+    -fx-padding: 0 0 8 0;
+}
+
+.desktop-tab-shell > .tab-header-area .tab-header-background {
+    -fx-background-color: transparent;
+}
+
+.desktop-tab-shell > .tab-header-area .headers-region .tab {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-background-radius: 18 18 0 0;
+    -fx-padding: 8 18;
+}
+
+.desktop-tab-shell > .tab-header-area .headers-region .tab:selected {
+    -fx-background-color: rgba(80, 227, 194, 0.18);
+}
+
+.desktop-tab-shell > .tab-header-area .headers-region .tab .tab-label {
+    -fx-text-fill: #d6e4f2;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.desktop-tab-shell > .tab-content-area {
+    -fx-background-color: transparent;
+}
+
 .desktop-home-hero-card {
     -fx-background-color:
         linear-gradient(to bottom right, rgba(18, 38, 34, 0.96), rgba(8, 21, 33, 0.96));
@@ -388,6 +421,11 @@
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 30, 0.16, 0, 8);
 }
 
+.desktop-tab-card {
+    -fx-background-insets: 0;
+    -fx-padding: 22;
+}
+
 .desktop-now-playing-card {
     -fx-min-width: 390;
     -fx-max-width: 470;
@@ -404,6 +442,13 @@
     -fx-background-color: rgba(255, 255, 255, 0.05);
     -fx-background-radius: 18;
     -fx-padding: 7 11;
+}
+
+.desktop-suggestions-list {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-border-color: rgba(80, 227, 194, 0.12);
+    -fx-border-radius: 16;
+    -fx-background-radius: 16;
 }
 
 .mobile-top-shell {
