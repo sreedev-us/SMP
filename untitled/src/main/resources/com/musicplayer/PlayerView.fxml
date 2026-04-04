@@ -125,6 +125,11 @@
                 <StackPane fx:id="desktopSongDetailsPage" visible="false" managed="false">
                     <VBox styleClass="center-panel desktop-shell" spacing="22">
                         <padding><Insets top="28" bottom="28" left="28" right="28" /></padding>
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="SONG DETAILS" styleClass="lyrics-section-label" />
+                            <Region HBox.hgrow="ALWAYS" />
+                            <Button text="Minimize" styleClass="control-button" onAction="#handleDesktopGoHome" />
+                        </HBox>
                         <HBox spacing="22" alignment="CENTER_LEFT">
                             <VBox styleClass="now-playing-card desktop-now-playing-card" alignment="CENTER" spacing="22" HBox.hgrow="ALWAYS">
                                 <StackPane>
