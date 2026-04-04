@@ -5,6 +5,7 @@ import org.json.JSONObject;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -100,6 +101,10 @@ public class FxMusicPlayer {
     @FXML private Label mTimeT;
     @FXML private Button expandedPlayPauseButton;
     @FXML private Label expandedLyricsBadgeLabel;
+    @FXML private ListView<SongData> mobileHomeQueueList;
+    @FXML private ListView<SongData> mobileRecommendationsList;
+    @FXML private Label mobileQueueSummaryLabel;
+    @FXML private Label mobileRecommendationSummaryLabel;
     private Button mobileSettingsHostButton;
     private Button mobileSettingsJoinButton;
     private TextField mobileSettingsLinkField;
@@ -127,6 +132,8 @@ public class FxMusicPlayer {
     private static final int MAX_SEARCH_HISTORY = 8;
     private final Map<String, SongData> webSearchIndex = new ConcurrentHashMap<>();
     private volatile String lastStatusMessage = "App Ready - Select a track";
+    private long recommendationRequestSequence = 0;
+    private boolean mobileLibraryMode = false;
 
     public FxMusicPlayer(AuthSystem auth, SettingsManager settings) {
         this.auth = auth;
@@ -255,6 +262,22 @@ public class FxMusicPlayer {
         playlistView.setItems(playlist);
         configureListView(playlistView);
         configureListView(searchResultsList);
+        if (mobileHomeQueueList != null) {
+            mobileHomeQueueList.setItems(playlist);
+            configureListView(mobileHomeQueueList);
+        }
+        if (mobileRecommendationsList != null) {
+            configureListView(mobileRecommendationsList);
+        }
+        playlist.addListener((ListChangeListener<SongData>) change -> {
+            refreshMobileQueueSummary();
+            if (playlistView != null) {
+                playlistView.refresh();
+            }
+            if (mobileHomeQueueList != null) {
+                mobileHomeQueueList.refresh();
+            }
+        });
         loadSearchHistory();
         refreshSearchHistoryUi();
 
@@ -311,6 +334,8 @@ public class FxMusicPlayer {
         renderLyricsPlaceholder("Pick a song to light up the lyrics panel.", "Waiting for track");
         updatePlayPauseLabel();
         updateSessionButtonLabels();
+        refreshMobileQueueSummary();
+        refreshMobileRecommendations(null);
 
         // Shuffle / Repeat / Auto Radio button initial style
         updateToggleButtonStyle(shuffleButton, shuffleEnabled);
@@ -418,6 +443,14 @@ public class FxMusicPlayer {
                 if (!cell.isEmpty() && cell.getItem() != null) {
                     System.out.println("UI: Cell Clicked for " + cell.getItem().getTitle());
                     if (listView == searchResultsList) {
+                        addToQueueAndPlay(cell.getItem());
+                    } else if (listView == mobileHomeQueueList) {
+                        currentSongIndex = indexOfSongInPlaylist(cell.getItem());
+                        if (currentSongIndex >= 0) {
+                            isPaused = false;
+                            playMusic();
+                        }
+                    } else if (listView == mobileRecommendationsList) {
                         addToQueueAndPlay(cell.getItem());
                     } else if (listView == playlistView && e.getClickCount() == 2) {
                         handlePlaylistDoubleClick();
@@ -1197,6 +1230,7 @@ public class FxMusicPlayer {
         String query = searchField.getText().trim();
         if (query.isEmpty()) { updateStatus("Please enter a search query."); return; }
         if (youtubeService == null) { updateStatus("YouTube Service not connected."); return; }
+        setMobileLibraryMode(false);
 
         rememberSearchQuery(query);
 
@@ -1260,6 +1294,24 @@ public class FxMusicPlayer {
                 autoFetchMoreSongs(song, false);
             }
         }
+    }
+
+    @FXML
+    public void handleAddRelatedSongs() {
+        SongData baseSong = null;
+        if (currentSongIndex >= 0 && currentSongIndex < playlist.size()) {
+            baseSong = playlist.get(currentSongIndex);
+        } else if (!playlist.isEmpty()) {
+            baseSong = playlist.get(playlist.size() - 1);
+        }
+
+        if (baseSong == null) {
+            updateStatus("Play something first so Harmony can find related songs.");
+            return;
+        }
+
+        autoFetchMoreSongs(baseSong, false);
+        refreshMobileRecommendations(baseSong);
     }
 
     @FXML
@@ -1685,6 +1737,44 @@ public class FxMusicPlayer {
         }
     }
 
+    private void setMobileLibraryMode(boolean libraryMode) {
+        mobileLibraryMode = libraryMode;
+        if (playlistView != null) {
+            playlistView.setVisible(libraryMode);
+            playlistView.setManaged(libraryMode);
+        }
+        if (libraryMode) {
+            if (searchCategoriesBox != null) {
+                searchCategoriesBox.setVisible(false);
+                searchCategoriesBox.setManaged(false);
+            }
+            if (searchResultsList != null) {
+                searchResultsList.setVisible(false);
+                searchResultsList.setManaged(false);
+            }
+            if (searchHistorySection != null) {
+                searchHistorySection.setVisible(false);
+                searchHistorySection.setManaged(false);
+            }
+            if (searchHistoryContainer != null) {
+                searchHistoryContainer.setVisible(false);
+                searchHistoryContainer.setManaged(false);
+            }
+            refreshMobileQueueSummary();
+        } else {
+            refreshSearchHistoryUi();
+            if (searchResultsList != null) {
+                boolean hasResults = !searchResultsList.getItems().isEmpty();
+                searchResultsList.setVisible(hasResults);
+                searchResultsList.setManaged(hasResults);
+                if (searchCategoriesBox != null) {
+                    searchCategoriesBox.setVisible(!hasResults);
+                    searchCategoriesBox.setManaged(!hasResults);
+                }
+            }
+        }
+    }
+
     @FXML
     public void handleOpenNowPlaying() {
         if (!AppPlatform.isMobile()) {
@@ -1809,6 +1899,89 @@ public class FxMusicPlayer {
             bubble.getChildren().addAll(queryButton, deleteButton);
             searchHistoryContainer.getChildren().add(bubble);
         }
+    }
+
+    private void refreshMobileQueueSummary() {
+        if (mobileQueueSummaryLabel == null) {
+            return;
+        }
+
+        if (playlist.isEmpty()) {
+            mobileQueueSummaryLabel.setText("Your queue is empty. Search for a song to get started.");
+            return;
+        }
+
+        String summary = playlist.size() + " track" + (playlist.size() == 1 ? "" : "s") + " queued";
+        if (currentSongIndex >= 0 && currentSongIndex < playlist.size()) {
+            SongData current = playlist.get(currentSongIndex);
+            summary += " • Now playing " + current.getTitle();
+        }
+        mobileQueueSummaryLabel.setText(summary);
+    }
+
+    private void refreshMobileRecommendations(SongData baseSong) {
+        if (mobileRecommendationsList == null || mobileRecommendationSummaryLabel == null) {
+            return;
+        }
+
+        long requestId = ++recommendationRequestSequence;
+        SongData pivot = baseSong;
+        if (pivot == null && currentSongIndex >= 0 && currentSongIndex < playlist.size()) {
+            pivot = playlist.get(currentSongIndex);
+        }
+
+        if (pivot == null) {
+            mobileRecommendationsList.setItems(FXCollections.observableArrayList());
+            mobileRecommendationSummaryLabel.setText("Play a song to unlock related recommendations.");
+            return;
+        }
+
+        SongData finalPivot = pivot;
+        mobileRecommendationSummaryLabel.setText("Finding songs related to " + finalPivot.getTitle() + "...");
+        new Thread(() -> {
+            List<SongData> recommendations = new ArrayList<>();
+
+            if (youtubeService != null) {
+                try {
+                    for (String query : buildAutoRadioQueries(finalPivot)) {
+                        if (recommendations.size() >= 8) {
+                            break;
+                        }
+                        List<YouTubeVideo> videos = youtubeService.searchVideos(query, 8);
+                        for (YouTubeVideo candidate : videos) {
+                            if (!isRelatedAutoRadioCandidate(finalPivot, recommendations, candidate)) {
+                                continue;
+                            }
+                            SongData song = new SongData();
+                            song.setVideoId(candidate.getId());
+                            song.setTitle(candidate.getTitle());
+                            song.setChannel(candidate.getChannel());
+                            song.setThumbnailUrl(candidate.getThumbnailUrl());
+                            song.setType("youtube");
+                            song.setLyricsSearchHint(finalPivot.getTitle());
+                            recommendations.add(song);
+                            if (recommendations.size() >= 8) {
+                                break;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Mobile recommendation fetch failed: " + e.getMessage());
+                }
+            }
+
+            Platform.runLater(() -> {
+                if (requestId != recommendationRequestSequence) {
+                    return;
+                }
+                mobileRecommendationsList.setItems(FXCollections.observableArrayList(recommendations));
+                if (recommendations.isEmpty()) {
+                    mobileRecommendationSummaryLabel.setText("No related songs found yet. Try a different search or play another track.");
+                } else {
+                    mobileRecommendationSummaryLabel.setText("Tap any result to play it instantly or fold it into the queue.");
+                }
+            });
+        }, "mobile-recommendations").start();
     }
 
     public void setExternalUrlOpener(Consumer<String> externalUrlOpener) {
@@ -1999,6 +2172,7 @@ public class FxMusicPlayer {
             playlistView.getSelectionModel().clearSelection();
             lanSync.clearWebTrackInfo();
             clearLyrics("Pick a song to light up the lyrics panel.", "Waiting for track");
+            refreshMobileRecommendations(null);
         } else {
             if (songTitleLabel != null) songTitleLabel.setText(song.getTitle());
             if (artistLabel != null) artistLabel.setText(song.getChannel() != null ? song.getChannel() : "Unknown Artist");
@@ -2009,7 +2183,9 @@ public class FxMusicPlayer {
             lanSync.updateWebTrackInfo(song.getTitle(), artistLabel.getText());
             renderLyricsPlaceholder("Fetching lyrics for " + song.getTitle(), "Searching lyrics");
             loadLyricsForSong(song);
+            refreshMobileRecommendations(song);
         }
+        refreshMobileQueueSummary();
     }
 
     private void loadLyricsForSong(SongData song) {
@@ -2187,18 +2363,23 @@ public class FxMusicPlayer {
     @FXML
     public void handleNavHome() {
         setMobileSearchVisible(false);
+        setMobileLibraryMode(false);
         hideSettingsOverlay();
     }
 
     @FXML
     public void handleNavSearch() {
         setMobileSearchVisible(true);
+        setMobileLibraryMode(false);
         hideSettingsOverlay();
     }
 
     @FXML
     public void handleNavLibrary() {
-        handleNavSearch();
+        setMobileSearchVisible(true);
+        setMobileLibraryMode(true);
+        hideSettingsOverlay();
+        updateStatus(playlist.isEmpty() ? "Library is empty. Search and add songs to build your queue." : "Queue ready. Tap a track to play it.");
     }
 
     @FXML

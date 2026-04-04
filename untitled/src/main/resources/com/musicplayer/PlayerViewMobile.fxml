@@ -99,28 +99,23 @@
                             </VBox>
                         </HBox>
 
-                        <!-- Your playlists -->
+                        <!-- Your queue -->
                         <VBox spacing="10">
-                            <Label text="Your playlists" styleClass="mobile-section-heading" />
-                            <HBox spacing="12">
-                                <VBox styleClass="playlist-vertical-card">
-                                    <StackPane styleClass="playlist-art playlist-grad-liked" minWidth="120" minHeight="120">
-                                        <Region styleClass="icon-heart" />
-                                    </StackPane>
-                                    <Label text="Liked Songs" styleClass="playlist-title" />
-                                    <Label text="185 tracks" styleClass="playlist-subtitle" />
-                                </VBox>
-                                <VBox styleClass="playlist-vertical-card">
-                                    <Region styleClass="playlist-art playlist-art-lofi" minWidth="120" minHeight="120" />
-                                    <Label text="Lo-fi Beats" styleClass="playlist-title" />
-                                    <Label text="Art tracks" styleClass="playlist-subtitle" />
-                                </VBox>
-                                <VBox styleClass="playlist-vertical-card">
-                                    <Region styleClass="playlist-art playlist-art-gym" minWidth="120" minHeight="120" />
-                                    <Label text="Gym Playlist" styleClass="playlist-title" />
-                                    <Label text="Act Insight" styleClass="playlist-subtitle" />
-                                </VBox>
+                            <Label text="Your queue" styleClass="mobile-section-heading" />
+                            <Label fx:id="mobileQueueSummaryLabel" text="Your queue is empty. Search for a song to get started." styleClass="playlist-subtitle" wrapText="true" />
+                            <ListView fx:id="mobileHomeQueueList" styleClass="mobile-search-results-list" prefHeight="220" maxHeight="220" />
+                        </VBox>
+
+                        <!-- Recommendations -->
+                        <VBox spacing="10">
+                            <HBox alignment="CENTER_LEFT" spacing="10">
+                                <Label text="For this track" styleClass="mobile-section-heading" />
+                                <Region HBox.hgrow="ALWAYS" />
+                                <Button text="Add Related" styleClass="icon-button" onAction="#handleAddRelatedSongs" />
+                                <Button text="Auto Radio" styleClass="icon-button" onAction="#handleToggleAutoRadio" />
                             </HBox>
+                            <Label fx:id="mobileRecommendationSummaryLabel" text="Play a song to unlock related recommendations." styleClass="playlist-subtitle" wrapText="true" />
+                            <ListView fx:id="mobileRecommendationsList" styleClass="mobile-search-results-list" prefHeight="240" maxHeight="240" />
                         </VBox>
 
                     </VBox>
@@ -209,8 +204,8 @@
                         <!-- Search History & Queue hooks -->
                         <VBox fx:id="searchHistorySection" visible="false" managed="false" />
                         <FlowPane fx:id="searchHistoryContainer" visible="false" managed="false" />
-                        <ListView fx:id="searchResultsList" styleClass="mobile-search-results-list" visible="false" managed="false" VBox.vgrow="ALWAYS" minHeight="400" />
-                        <ListView fx:id="playlistView" styleClass="invisible-hooks" visible="false" managed="false" />
+                        <ListView fx:id="searchResultsList" styleClass="mobile-search-results-list" visible="false" managed="false" VBox.vgrow="ALWAYS" minHeight="320" />
+                        <ListView fx:id="playlistView" styleClass="mobile-search-results-list" visible="false" managed="false" VBox.vgrow="ALWAYS" minHeight="320" />
                         
                         <!-- Static Categories Grid matching Image 3 -->
                         <FlowPane fx:id="searchCategoriesBox" hgap="12" vgap="12">
@@ -430,16 +425,18 @@
 
             <!-- Transport Controls -->
             <HBox alignment="CENTER" styleClass="now-playing-transport" spacing="24">
-                <Button styleClass="icon-button-shuffle" onAction="#handleToggleShuffle" />
+                <Button fx:id="shuffleButton" styleClass="icon-button-shuffle" onAction="#handleToggleShuffle" />
                 <Button styleClass="icon-button-prev" onAction="#handlePrevious" />
                 <Button fx:id="expandedPlayPauseButton" styleClass="now-playing-play-btn" onAction="#handlePlayPause" />
                 <Button styleClass="icon-button-next" onAction="#handleNext" />
-                <Button styleClass="icon-button-repeat" onAction="#handleToggleRepeat" />
+                <Button fx:id="repeatButton" styleClass="icon-button-repeat" onAction="#handleToggleRepeat" />
             </HBox>
             
             <HBox styleClass="now-playing-bottom-row" alignment="CENTER_LEFT" spacing="16">
                 <Region styleClass="icon-devices" />
                 <Region HBox.hgrow="ALWAYS" />
+                <Button fx:id="autoRadioButton" text="Auto Radio" styleClass="icon-button" onAction="#handleToggleAutoRadio" />
+                <Button text="Related" styleClass="icon-button" onAction="#handleAddRelatedSongs" />
                 <Region styleClass="icon-share" />
                 <Region styleClass="icon-playlist-add" />
             </HBox>
