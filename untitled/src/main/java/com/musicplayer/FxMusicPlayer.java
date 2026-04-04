@@ -57,6 +57,12 @@ public class FxMusicPlayer {
     // --- FXML UI Components ---
     @FXML private Label userInfoLabel;
     @FXML private TextField searchField;
+    @FXML private StackPane desktopHomePage;
+    @FXML private StackPane desktopSearchPage;
+    @FXML private StackPane desktopSongDetailsPage;
+    @FXML private HBox desktopMiniPlayerBar;
+    @FXML private Label desktopMiniPlayerTitleLabel;
+    @FXML private Label desktopMiniPlayerArtistLabel;
     @FXML private VBox searchHistorySection;
     @FXML private FlowPane searchHistoryContainer;
     @FXML private ListView<SongData> searchResultsList;
@@ -66,6 +72,7 @@ public class FxMusicPlayer {
     @FXML private ListView<String> desktopCustomPlaylistsView;
     @FXML private ListView<SongData> desktopCustomPlaylistSongsView;
     @FXML private ComboBox<String> desktopPlaylistPicker;
+    @FXML private ComboBox<String> desktopDetailsPlaylistPicker;
     @FXML private ListView<SongData> playlistView;
     @FXML private ImageView albumArtView;
     @FXML private Label songTitleLabel;
@@ -346,6 +353,9 @@ public class FxMusicPlayer {
                 }
             });
         }
+        if (desktopDetailsPlaylistPicker != null) {
+            desktopDetailsPlaylistPicker.setItems(customPlaylistNames);
+        }
         if (likedSongsView != null) {
             likedSongsView.setItems(likedSongs);
             configureListView(likedSongsView);
@@ -480,6 +490,9 @@ public class FxMusicPlayer {
             if (statusLabel != null) {
                 statusLabel.getStyleClass().add("status-label-diagnostic");
                 updateStatus("App Ready - Select a track");
+            }
+            if (!AppPlatform.isMobile()) {
+                showDesktopPage("home");
             }
         });
     }
@@ -660,6 +673,23 @@ public class FxMusicPlayer {
         } else {
             Platform.runLater(apply);
         }
+    }
+
+    private void showDesktopPage(String page) {
+        if (AppPlatform.isMobile()) {
+            return;
+        }
+        setDesktopPageVisible(desktopHomePage, "home".equals(page));
+        setDesktopPageVisible(desktopSearchPage, "search".equals(page));
+        setDesktopPageVisible(desktopSongDetailsPage, "details".equals(page));
+    }
+
+    private void setDesktopPageVisible(StackPane page, boolean visible) {
+        if (page == null) {
+            return;
+        }
+        page.setVisible(visible);
+        page.setManaged(visible);
     }
 
     //  Player Controls 
@@ -1408,7 +1438,27 @@ public class FxMusicPlayer {
 
     @FXML
     public void handleSearch() {
+        if (!AppPlatform.isMobile()) {
+            showDesktopPage("search");
+        }
         performSearch();
+    }
+
+    @FXML
+    public void handleDesktopGoHome() {
+        showDesktopPage("home");
+    }
+
+    @FXML
+    public void handleOpenDesktopSongDetails() {
+        if (AppPlatform.isMobile()) {
+            return;
+        }
+        if (currentSongIndex < 0 || currentSongIndex >= playlist.size()) {
+            updateStatus("Play a song first to open song details.");
+            return;
+        }
+        showDesktopPage("details");
     }
 
 
@@ -1512,6 +1562,40 @@ public class FxMusicPlayer {
         }
 
         String playlistName = getSelectedCustomPlaylistName();
+        if (playlistName == null || playlistName.isBlank()) {
+            updateStatus("Create or select a playlist first.");
+            return;
+        }
+
+        ObservableList<SongData> songs = customPlaylists.get(playlistName);
+        if (songs == null) {
+            updateStatus("Playlist not found.");
+            return;
+        }
+
+        boolean exists = songs.stream().anyMatch(existing -> isSameSong(existing, song));
+        if (!exists) {
+            songs.add(cloneSong(song));
+            saveCustomPlaylists();
+            refreshDesktopCustomPlaylistSongs(playlistName);
+            updateStatus("Added to playlist \"" + playlistName + "\": " + song.getTitle());
+        } else {
+            updateStatus("That song is already in \"" + playlistName + "\".");
+        }
+    }
+
+    @FXML
+    public void handleAddCurrentQueueSongToPlaylist() {
+        SongData song = playlistView != null ? playlistView.getSelectionModel().getSelectedItem() : null;
+        if (song == null && currentSongIndex >= 0 && currentSongIndex < playlist.size()) {
+            song = playlist.get(currentSongIndex);
+        }
+        if (song == null) {
+            updateStatus("Select a queue song first.");
+            return;
+        }
+
+        String playlistName = desktopDetailsPlaylistPicker != null ? desktopDetailsPlaylistPicker.getValue() : getSelectedCustomPlaylistName();
         if (playlistName == null || playlistName.isBlank()) {
             updateStatus("Create or select a playlist first.");
             return;
@@ -2392,6 +2476,9 @@ public class FxMusicPlayer {
         if (desktopPlaylistPicker != null && !customPlaylistNames.isEmpty() && desktopPlaylistPicker.getValue() == null) {
             desktopPlaylistPicker.setValue(customPlaylistNames.get(0));
         }
+        if (desktopDetailsPlaylistPicker != null && !customPlaylistNames.isEmpty() && desktopDetailsPlaylistPicker.getValue() == null) {
+            desktopDetailsPlaylistPicker.setValue(customPlaylistNames.get(0));
+        }
     }
 
     private void saveCustomPlaylists() {
@@ -2421,6 +2508,9 @@ public class FxMusicPlayer {
         }
         if (desktopPlaylistPicker != null) {
             desktopPlaylistPicker.setValue(name);
+        }
+        if (desktopDetailsPlaylistPicker != null) {
+            desktopDetailsPlaylistPicker.setValue(name);
         }
         refreshDesktopCustomPlaylistSongs(name);
         updateStatus("Created playlist: " + name);
@@ -2789,6 +2879,10 @@ public class FxMusicPlayer {
             if (expandedArtistLabel != null) expandedArtistLabel.setText("Select a song from the playlist");
             setAlbumArt(null);
             playlistView.getSelectionModel().clearSelection();
+            if (desktopMiniPlayerBar != null) {
+                desktopMiniPlayerBar.setVisible(false);
+                desktopMiniPlayerBar.setManaged(false);
+            }
             lanSync.clearWebTrackInfo();
             clearLyrics("Pick a song to light up the lyrics panel.", "Waiting for track");
             refreshMobileRecommendations(null);
@@ -2798,6 +2892,16 @@ public class FxMusicPlayer {
             if (expandedSongTitleLabel != null) expandedSongTitleLabel.setText(song.getTitle());
             if (expandedArtistLabel != null) expandedArtistLabel.setText(song.getChannel() != null ? song.getChannel() : "Unknown Artist");
             playlistView.getSelectionModel().select(song);
+            if (desktopMiniPlayerTitleLabel != null) {
+                desktopMiniPlayerTitleLabel.setText(song.getTitle());
+            }
+            if (desktopMiniPlayerArtistLabel != null) {
+                desktopMiniPlayerArtistLabel.setText(song.getChannel() != null ? song.getChannel() : "Unknown Artist");
+            }
+            if (desktopMiniPlayerBar != null) {
+                desktopMiniPlayerBar.setVisible(true);
+                desktopMiniPlayerBar.setManaged(true);
+            }
             setAlbumArt(song.getThumbnailUrl());
             lanSync.updateWebTrackInfo(song.getTitle(), artistLabel.getText());
             renderLyricsPlaceholder("Fetching lyrics for " + song.getTitle(), "Searching lyrics");

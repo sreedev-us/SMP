@@ -451,6 +451,26 @@
     -fx-background-radius: 16;
 }
 
+.desktop-mini-player-bar {
+    -fx-background-color: rgba(15, 26, 42, 0.94);
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(80, 227, 194, 0.16);
+    -fx-border-radius: 20;
+    -fx-padding: 12 16;
+    -fx-cursor: hand;
+}
+
+.desktop-mini-player-title {
+    -fx-text-fill: #f6fbff;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.desktop-mini-player-artist {
+    -fx-text-fill: #9bb2c9;
+    -fx-font-size: 11px;
+}
+
 .mobile-top-shell {
     -fx-padding: 10 0 0 0;
 }
