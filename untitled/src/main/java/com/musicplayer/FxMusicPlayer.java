@@ -11,6 +11,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.TextFieldListCell;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
@@ -29,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Optional;
@@ -59,6 +61,11 @@ public class FxMusicPlayer {
     @FXML private FlowPane searchHistoryContainer;
     @FXML private ListView<SongData> searchResultsList;
     @FXML private ListView<String> searchSuggestionsList;
+    @FXML private ListView<SongData> desktopRecentPlayedList;
+    @FXML private ListView<SongData> desktopHomeRecommendationsList;
+    @FXML private ListView<String> desktopCustomPlaylistsView;
+    @FXML private ListView<SongData> desktopCustomPlaylistSongsView;
+    @FXML private ComboBox<String> desktopPlaylistPicker;
     @FXML private ListView<SongData> playlistView;
     @FXML private ImageView albumArtView;
     @FXML private Label songTitleLabel;
@@ -112,6 +119,8 @@ public class FxMusicPlayer {
     @FXML private Label desktopQueueSummaryLabel;
     @FXML private Label desktopRecommendationSummaryLabel;
     @FXML private Label likedSongsSummaryLabel;
+    @FXML private Label desktopRecentSummaryLabel;
+    @FXML private Label desktopPlaylistSummaryLabel;
     private Button mobileSettingsHostButton;
     private Button mobileSettingsJoinButton;
     private TextField mobileSettingsLinkField;
@@ -123,6 +132,10 @@ public class FxMusicPlayer {
     private final ObservableList<SongData> likedSongs = FXCollections.observableArrayList();
     private final ObservableList<SongData> recommendedSongs = FXCollections.observableArrayList();
     private final ObservableList<String> searchSuggestions = FXCollections.observableArrayList();
+    private final ObservableList<SongData> recentPlayedSongs = FXCollections.observableArrayList();
+    private final ObservableList<String> customPlaylistNames = FXCollections.observableArrayList();
+    private final ObservableList<SongData> selectedCustomPlaylistSongs = FXCollections.observableArrayList();
+    private final Map<String, ObservableList<SongData>> customPlaylists = new LinkedHashMap<>();
     private int currentSongIndex = -1;
     private boolean isPlaying = false;
     private boolean isPaused = false;
@@ -303,6 +316,36 @@ public class FxMusicPlayer {
                 }
             });
         }
+        if (desktopRecentPlayedList != null) {
+            desktopRecentPlayedList.setItems(recentPlayedSongs);
+            configureListView(desktopRecentPlayedList);
+        }
+        if (desktopHomeRecommendationsList != null) {
+            desktopHomeRecommendationsList.setItems(recommendedSongs);
+            configureListView(desktopHomeRecommendationsList);
+        }
+        if (desktopCustomPlaylistsView != null) {
+            desktopCustomPlaylistsView.setItems(customPlaylistNames);
+            desktopCustomPlaylistsView.setCellFactory(lv -> new TextFieldListCell<>());
+            desktopCustomPlaylistsView.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> {
+                if (desktopPlaylistPicker != null && newValue != null && !newValue.equals(desktopPlaylistPicker.getValue())) {
+                    desktopPlaylistPicker.setValue(newValue);
+                }
+                refreshDesktopCustomPlaylistSongs(newValue);
+            });
+        }
+        if (desktopCustomPlaylistSongsView != null) {
+            desktopCustomPlaylistSongsView.setItems(selectedCustomPlaylistSongs);
+            configureListView(desktopCustomPlaylistSongsView);
+        }
+        if (desktopPlaylistPicker != null) {
+            desktopPlaylistPicker.setItems(customPlaylistNames);
+            desktopPlaylistPicker.valueProperty().addListener((obs, oldValue, newValue) -> {
+                if (desktopCustomPlaylistsView != null && newValue != null && !newValue.equals(desktopCustomPlaylistsView.getSelectionModel().getSelectedItem())) {
+                    desktopCustomPlaylistsView.getSelectionModel().select(newValue);
+                }
+            });
+        }
         if (likedSongsView != null) {
             likedSongsView.setItems(likedSongs);
             configureListView(likedSongsView);
@@ -320,6 +363,8 @@ public class FxMusicPlayer {
             configureListView(mobileRecommendationsList);
         }
         likedSongs.setAll(shelfStore.loadLikedSongs());
+        recentPlayedSongs.setAll(shelfStore.loadRecentPlayedSongs());
+        loadCustomPlaylists();
         playlist.addListener((ListChangeListener<SongData>) change -> {
             refreshMobileQueueSummary();
             refreshDesktopQueueSummary();
@@ -335,6 +380,13 @@ public class FxMusicPlayer {
             refreshLikedSongsSummary();
             if (likedSongsView != null) {
                 likedSongsView.refresh();
+            }
+        });
+        recentPlayedSongs.addListener((ListChangeListener<SongData>) change -> {
+            shelfStore.saveRecentPlayedSongs(recentPlayedSongs);
+            refreshRecentPlayedSummary();
+            if (desktopRecentPlayedList != null) {
+                desktopRecentPlayedList.refresh();
             }
         });
         loadSearchHistory();
@@ -396,6 +448,8 @@ public class FxMusicPlayer {
         refreshMobileQueueSummary();
         refreshDesktopQueueSummary();
         refreshLikedSongsSummary();
+        refreshRecentPlayedSummary();
+        refreshDesktopCustomPlaylistSongs(getSelectedCustomPlaylistName());
         refreshMobileRecommendations(null);
 
         // Shuffle / Repeat / Auto Radio button initial style
@@ -505,18 +559,26 @@ public class FxMusicPlayer {
                 if (!cell.isEmpty() && cell.getItem() != null) {
                     System.out.println("UI: Cell Clicked for " + cell.getItem().getTitle());
                     if (listView == searchResultsList) {
-                        addToQueueAndPlay(cell.getItem());
+                        if (AppPlatform.isMobile() || e.getClickCount() >= 2) {
+                            addToQueueAndPlay(cell.getItem());
+                        }
                     } else if (listView == mobileHomeQueueList) {
                         currentSongIndex = indexOfSongInPlaylist(cell.getItem());
                         if (currentSongIndex >= 0) {
                             isPaused = false;
                             playMusic();
                         }
+                    } else if (listView == desktopRecentPlayedList) {
+                        addToQueueAndPlay(cloneSong(cell.getItem()));
+                    } else if (listView == desktopHomeRecommendationsList) {
+                        addToQueueAndPlay(cloneSong(cell.getItem()));
                     } else if (listView == desktopRecommendationsList) {
                         addToQueueAndPlay(cell.getItem());
                     } else if (listView == mobileRecommendationsList) {
                         addToQueueAndPlay(cell.getItem());
                     } else if (listView == likedSongsView) {
+                        addToQueueAndPlay(cloneSong(cell.getItem()));
+                    } else if (listView == desktopCustomPlaylistSongsView) {
                         addToQueueAndPlay(cloneSong(cell.getItem()));
                     } else if (listView == playlistView && e.getClickCount() == 2) {
                         handlePlaylistDoubleClick();
@@ -756,8 +818,20 @@ public class FxMusicPlayer {
             : null;
 
         if (currentSong != null) {
-                        updateStatus("Now Playing: " + currentSong.getTitle());
+            recordRecentPlay(currentSong);
+            updateStatus("Now Playing: " + currentSong.getTitle());
             loadLyricsForSong(currentSong);
+        }
+    }
+
+    private void recordRecentPlay(SongData song) {
+        if (song == null) {
+            return;
+        }
+        recentPlayedSongs.removeIf(existing -> isSameSong(existing, song));
+        recentPlayedSongs.add(0, cloneSong(song));
+        while (recentPlayedSongs.size() > 12) {
+            recentPlayedSongs.remove(recentPlayedSongs.size() - 1);
         }
     }
 
@@ -1406,6 +1480,57 @@ public class FxMusicPlayer {
             if (autoRadioEnabled) {
                 autoFetchMoreSongs(song, false);
             }
+        }
+    }
+
+    @FXML
+    public void handlePlaySelectedSearchResult() {
+        SongData song = searchResultsList.getSelectionModel().getSelectedItem();
+        if (song == null) {
+            updateStatus("Select a search result first.");
+            return;
+        }
+        addToQueueAndPlay(song);
+    }
+
+    @FXML
+    public void handleCreateDesktopPlaylist() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Create Playlist");
+        dialog.setHeaderText("Create a playlist");
+        dialog.setContentText("Playlist name:");
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(this::createCustomPlaylist);
+    }
+
+    @FXML
+    public void handleAddSearchResultToPlaylist() {
+        SongData song = searchResultsList.getSelectionModel().getSelectedItem();
+        if (song == null) {
+            updateStatus("Select a song from search results first.");
+            return;
+        }
+
+        String playlistName = getSelectedCustomPlaylistName();
+        if (playlistName == null || playlistName.isBlank()) {
+            updateStatus("Create or select a playlist first.");
+            return;
+        }
+
+        ObservableList<SongData> songs = customPlaylists.get(playlistName);
+        if (songs == null) {
+            updateStatus("Playlist not found.");
+            return;
+        }
+
+        boolean exists = songs.stream().anyMatch(existing -> isSameSong(existing, song));
+        if (!exists) {
+            songs.add(cloneSong(song));
+            saveCustomPlaylists();
+            refreshDesktopCustomPlaylistSongs(playlistName);
+            updateStatus("Added to playlist \"" + playlistName + "\": " + song.getTitle());
+        } else {
+            updateStatus("That song is already in \"" + playlistName + "\".");
         }
     }
 
@@ -2254,6 +2379,76 @@ public class FxMusicPlayer {
         }
     }
 
+    private void loadCustomPlaylists() {
+        customPlaylists.clear();
+        Map<String, List<SongData>> loaded = shelfStore.loadCustomPlaylists();
+        for (Map.Entry<String, List<SongData>> entry : loaded.entrySet()) {
+            customPlaylists.put(entry.getKey(), FXCollections.observableArrayList(entry.getValue()));
+        }
+        customPlaylistNames.setAll(customPlaylists.keySet());
+        if (desktopCustomPlaylistsView != null && !customPlaylistNames.isEmpty()) {
+            desktopCustomPlaylistsView.getSelectionModel().select(0);
+        }
+        if (desktopPlaylistPicker != null && !customPlaylistNames.isEmpty() && desktopPlaylistPicker.getValue() == null) {
+            desktopPlaylistPicker.setValue(customPlaylistNames.get(0));
+        }
+    }
+
+    private void saveCustomPlaylists() {
+        Map<String, List<SongData>> snapshot = new LinkedHashMap<>();
+        for (Map.Entry<String, ObservableList<SongData>> entry : customPlaylists.entrySet()) {
+            snapshot.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+        shelfStore.saveCustomPlaylists(snapshot);
+        customPlaylistNames.setAll(customPlaylists.keySet());
+        refreshDesktopPlaylistSummary();
+    }
+
+    private void createCustomPlaylist(String rawName) {
+        String name = rawName == null ? "" : rawName.trim();
+        if (name.isBlank()) {
+            updateStatus("Playlist name can't be empty.");
+            return;
+        }
+        if (customPlaylists.containsKey(name)) {
+            updateStatus("Playlist already exists: " + name);
+            return;
+        }
+        customPlaylists.put(name, FXCollections.observableArrayList());
+        saveCustomPlaylists();
+        if (desktopCustomPlaylistsView != null) {
+            desktopCustomPlaylistsView.getSelectionModel().select(name);
+        }
+        if (desktopPlaylistPicker != null) {
+            desktopPlaylistPicker.setValue(name);
+        }
+        refreshDesktopCustomPlaylistSongs(name);
+        updateStatus("Created playlist: " + name);
+    }
+
+    private String getSelectedCustomPlaylistName() {
+        if (desktopPlaylistPicker != null && desktopPlaylistPicker.getValue() != null && !desktopPlaylistPicker.getValue().isBlank()) {
+            return desktopPlaylistPicker.getValue();
+        }
+        if (desktopCustomPlaylistsView != null) {
+            return desktopCustomPlaylistsView.getSelectionModel().getSelectedItem();
+        }
+        return customPlaylistNames.isEmpty() ? null : customPlaylistNames.get(0);
+    }
+
+    private void refreshDesktopCustomPlaylistSongs(String playlistName) {
+        selectedCustomPlaylistSongs.clear();
+        if (playlistName == null || playlistName.isBlank()) {
+            refreshDesktopPlaylistSummary();
+            return;
+        }
+        ObservableList<SongData> songs = customPlaylists.get(playlistName);
+        if (songs != null) {
+            selectedCustomPlaylistSongs.setAll(songs);
+        }
+        refreshDesktopPlaylistSummary();
+    }
+
     private void refreshMobileQueueSummary() {
         if (mobileQueueSummaryLabel == null) {
             return;
@@ -2285,6 +2480,31 @@ public class FxMusicPlayer {
             summary += " • Playing " + playlist.get(currentSongIndex).getTitle();
         }
         desktopQueueSummaryLabel.setText(summary);
+    }
+
+    private void refreshRecentPlayedSummary() {
+        if (desktopRecentSummaryLabel == null) {
+            return;
+        }
+        if (recentPlayedSongs.isEmpty()) {
+            desktopRecentSummaryLabel.setText("Recently played songs will show up here once you start listening.");
+        } else {
+            desktopRecentSummaryLabel.setText(recentPlayedSongs.size() + " recent song" + (recentPlayedSongs.size() == 1 ? "" : "s") + " ready to replay.");
+        }
+    }
+
+    private void refreshDesktopPlaylistSummary() {
+        if (desktopPlaylistSummaryLabel == null) {
+            return;
+        }
+        String name = getSelectedCustomPlaylistName();
+        if (name == null || name.isBlank()) {
+            desktopPlaylistSummaryLabel.setText("Create a playlist, then add songs to it from search.");
+            return;
+        }
+        ObservableList<SongData> songs = customPlaylists.get(name);
+        int count = songs == null ? 0 : songs.size();
+        desktopPlaylistSummaryLabel.setText(name + " • " + count + " track" + (count == 1 ? "" : "s"));
     }
 
     private void refreshLikedSongsSummary() {

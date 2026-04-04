@@ -2,6 +2,7 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.ProgressIndicator?>
@@ -47,35 +48,18 @@
         </top>
 
         <left>
-            <VBox fx:id="sidebar" styleClass="sidebar desktop-sidebar" minWidth="280" maxWidth="340" prefWidth="300" spacing="18">
+            <VBox fx:id="sidebar" styleClass="sidebar desktop-sidebar" minWidth="250" maxWidth="280" prefWidth="260" spacing="18">
                 <padding><Insets top="24" left="18" right="18" bottom="24" /></padding>
 
                 <VBox spacing="12" styleClass="desktop-home-hero-card">
                     <Label text="Harmony Pro" styleClass="desktop-home-title" />
-                    <Label text="A calmer desktop flow with dedicated pages for search, queue, and wishlist, plus quick radio controls." styleClass="desktop-home-copy" wrapText="true" />
-                    <HBox spacing="8">
-                        <Button text="Search" styleClass="desktop-home-primary-button" HBox.hgrow="ALWAYS" onAction="#handleSearch" />
-                        <Button text="Files" styleClass="desktop-action-chip" HBox.hgrow="ALWAYS" onAction="#handleAddLocalFiles" />
-                    </HBox>
-                    <FlowPane hgap="8" vgap="8">
-                        <Button text="Add Related" styleClass="desktop-action-chip" onAction="#handleAddRelatedSongs" />
-                        <Button text="Auto Radio" styleClass="desktop-action-chip" onAction="#handleToggleAutoRadio" />
-                        <Button text="Save Current" styleClass="desktop-action-chip" onAction="#handleToggleCurrentSongLiked" />
-                        <Button text="Clear Queue" styleClass="desktop-action-chip desktop-action-danger" onAction="#handleClearPlaylist" />
-                    </FlowPane>
+                    <Label text="Desktop now follows the same flow as mobile: Home, Search, and Song Details." styleClass="desktop-home-copy" wrapText="true" />
                 </VBox>
 
                 <VBox spacing="10" styleClass="desktop-panel-card">
                     <Label text="SESSION" styleClass="section-label" />
-                    <Label text="Use the pages on the right for search, queue, and wishlist. The now playing card stays pinned up top, just like the mobile experience." styleClass="user-info-label" wrapText="true" />
-                    <HBox spacing="8">
-                        <Button text="Play / Pause" styleClass="control-button" HBox.hgrow="ALWAYS" onAction="#handlePlayPause" />
-                        <Button text="Next" styleClass="control-button" HBox.hgrow="ALWAYS" onAction="#handleNext" />
-                    </HBox>
-                    <HBox spacing="8">
-                        <Button text="Shuffle" styleClass="control-button" HBox.hgrow="ALWAYS" onAction="#handleToggleShuffle" />
-                        <Button text="Repeat" styleClass="control-button" HBox.hgrow="ALWAYS" onAction="#handleToggleRepeat" />
-                    </HBox>
+                    <Label text="Home shows recent plays and playlists, Search is for finding songs, and Song Details contains queue, lyrics, and song actions." styleClass="user-info-label" wrapText="true" />
+                    <Button text="Add Local Files" styleClass="control-button" onAction="#handleAddLocalFiles" />
                 </VBox>
             </VBox>
         </left>
@@ -89,7 +73,7 @@
                         <HBox alignment="CENTER_LEFT" spacing="10">
                             <Label text="NOW PLAYING" styleClass="lyrics-section-label" />
                             <Region HBox.hgrow="ALWAYS" />
-                            <Label text="Search, play, and let radio take over from here." styleClass="desktop-inline-summary" wrapText="true" />
+                            <Label text="Search, play, and let radio continue from here." styleClass="desktop-inline-summary" wrapText="true" />
                         </HBox>
                         <StackPane>
                             <ImageView fx:id="albumArtView"
@@ -103,13 +87,6 @@
                                styleClass="song-title-label" wrapText="true" maxWidth="460" />
                         <Label fx:id="artistLabel" text="Search for a song and click to play"
                                styleClass="artist-label" />
-                        <FlowPane hgap="8" vgap="8" alignment="CENTER">
-                            <Button text="Save to Wishlist" styleClass="desktop-action-chip" onAction="#handleToggleCurrentSongLiked" />
-                            <Button text="Add Related Songs" styleClass="desktop-action-chip" onAction="#handleAddRelatedSongs" />
-                            <Button text="Auto Radio" styleClass="desktop-action-chip" onAction="#handleToggleAutoRadio" />
-                            <Button text="Shuffle" styleClass="desktop-action-chip" onAction="#handleToggleShuffle" />
-                            <Button text="Repeat" styleClass="desktop-action-chip" onAction="#handleToggleRepeat" />
-                        </FlowPane>
                     </VBox>
 
                     <VBox styleClass="lyrics-card desktop-panel-card" spacing="16" HBox.hgrow="ALWAYS">
@@ -139,9 +116,34 @@
 
                 <TabPane tabClosingPolicy="UNAVAILABLE" styleClass="desktop-tab-shell" VBox.vgrow="ALWAYS">
                     <tabs>
+                        <Tab text="Home">
+                            <VBox styleClass="desktop-panel-card desktop-tab-card" spacing="12">
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="RECENTLY PLAYED" styleClass="lyrics-section-label" />
+                                    <Region HBox.hgrow="ALWAYS" />
+                                    <Label fx:id="desktopRecentSummaryLabel" text="Recently played songs will show up here once you start listening." styleClass="desktop-inline-summary" wrapText="true" />
+                                </HBox>
+                                <ListView fx:id="desktopRecentPlayedList" styleClass="playlist-view desktop-list" prefHeight="140" maxHeight="140" />
+
+                                <Label text="RECOMMENDED FOR YOU" styleClass="lyrics-section-label" />
+                                <ListView fx:id="desktopHomeRecommendationsList" styleClass="playlist-view desktop-list" prefHeight="140" maxHeight="140" />
+
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="YOUR PLAYLISTS" styleClass="lyrics-section-label" />
+                                    <Region HBox.hgrow="ALWAYS" />
+                                    <Button text="Create Playlist" styleClass="control-button" onAction="#handleCreateDesktopPlaylist" />
+                                </HBox>
+                                <Label fx:id="desktopPlaylistSummaryLabel" text="Create a playlist, then add songs to it from search." styleClass="user-info-label" wrapText="true" />
+                                <HBox spacing="16" VBox.vgrow="ALWAYS">
+                                    <ListView fx:id="desktopCustomPlaylistsView" styleClass="playlist-view desktop-list" prefWidth="220" />
+                                    <ListView fx:id="desktopCustomPlaylistSongsView" styleClass="playlist-view desktop-list" HBox.hgrow="ALWAYS" />
+                                </HBox>
+                            </VBox>
+                        </Tab>
+
                         <Tab text="Search">
                             <VBox styleClass="desktop-panel-card desktop-tab-card" spacing="12">
-                                <Label text="SEARCH" styleClass="lyrics-section-label" />
+                                <Label text="SEARCH SONGS" styleClass="lyrics-section-label" />
                                 <HBox spacing="8" alignment="CENTER_LEFT">
                                     <TextField fx:id="searchField" promptText="Search YouTube..."
                                                styleClass="search-field" HBox.hgrow="ALWAYS"
@@ -153,37 +155,46 @@
                                     <Label text="RECENT SEARCHES" styleClass="section-label" />
                                     <FlowPane fx:id="searchHistoryContainer" hgap="8" vgap="8" />
                                 </VBox>
-                                <ListView fx:id="searchResultsList" styleClass="results-list desktop-list"
-                                          VBox.vgrow="ALWAYS" minHeight="260" />
-                                <Button text="Add without Playing" styleClass="add-button"
-                                        onAction="#handleAddSearchResult" />
-                            </VBox>
-                        </Tab>
-                        <Tab text="Queue">
-                            <VBox styleClass="desktop-panel-card desktop-tab-card" spacing="12">
-                                <Label text="YOUR QUEUE" styleClass="lyrics-section-label" />
-                                <Label fx:id="desktopQueueSummaryLabel" text="Your queue is empty. Search for tracks or add local audio." styleClass="desktop-inline-summary" wrapText="true" />
-                                <ListView fx:id="playlistView" styleClass="playlist-view desktop-list"
-                                          VBox.vgrow="ALWAYS" minHeight="320" />
+                                <ListView fx:id="searchResultsList" styleClass="results-list desktop-list" VBox.vgrow="ALWAYS" minHeight="260" />
                                 <HBox spacing="8">
-                                    <Button text="Remove" styleClass="control-button" HBox.hgrow="ALWAYS"
-                                            onAction="#handleRemoveFromPlaylist" />
-                                    <Button text="Clear All" styleClass="control-button" HBox.hgrow="ALWAYS"
-                                            onAction="#handleClearPlaylist" />
+                                    <Button text="Play Selected" styleClass="control-button" HBox.hgrow="ALWAYS" onAction="#handlePlaySelectedSearchResult" />
+                                    <Button text="Add to Queue" styleClass="control-button" HBox.hgrow="ALWAYS" onAction="#handleAddSearchResult" />
+                                </HBox>
+                                <HBox spacing="8" alignment="CENTER_LEFT">
+                                    <ComboBox fx:id="desktopPlaylistPicker" promptText="Select playlist" HBox.hgrow="ALWAYS" />
+                                    <Button text="Add to Playlist" styleClass="add-button" onAction="#handleAddSearchResultToPlaylist" />
                                 </HBox>
                             </VBox>
                         </Tab>
-                        <Tab text="Wishlist">
+
+                        <Tab text="Song Details">
                             <VBox styleClass="desktop-panel-card desktop-tab-card" spacing="12">
-                                <Label text="WISHLIST" styleClass="lyrics-section-label" />
-                                <Label fx:id="likedSongsSummaryLabel" text="Save songs here to build a quick-access shelf across the app." styleClass="user-info-label" wrapText="true" />
-                                <ListView fx:id="likedSongsView" styleClass="playlist-view desktop-list" VBox.vgrow="ALWAYS" minHeight="320" />
-                                <HBox spacing="8">
-                                    <Button text="Save Current" styleClass="control-button" HBox.hgrow="ALWAYS"
-                                            onAction="#handleToggleCurrentSongLiked" />
-                                    <Button text="Remove Saved" styleClass="control-button" HBox.hgrow="ALWAYS"
-                                            onAction="#handleRemoveLikedSong" />
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="QUEUE" styleClass="lyrics-section-label" />
+                                    <Region HBox.hgrow="ALWAYS" />
+                                    <Label fx:id="desktopQueueSummaryLabel" text="Your queue is empty. Search for tracks or add local audio." styleClass="desktop-inline-summary" wrapText="true" />
                                 </HBox>
+                                <ListView fx:id="playlistView" styleClass="playlist-view desktop-list" VBox.vgrow="ALWAYS" minHeight="180" prefHeight="180" />
+                                <HBox spacing="8">
+                                    <Button text="Remove" styleClass="control-button" HBox.hgrow="ALWAYS" onAction="#handleRemoveFromPlaylist" />
+                                    <Button text="Clear Queue" styleClass="control-button" HBox.hgrow="ALWAYS" onAction="#handleClearPlaylist" />
+                                </HBox>
+
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <Label text="WISHLIST" styleClass="lyrics-section-label" />
+                                    <Region HBox.hgrow="ALWAYS" />
+                                    <Label fx:id="likedSongsSummaryLabel" text="Save songs here to build a quick-access shelf across the app." styleClass="user-info-label" wrapText="true" />
+                                </HBox>
+                                <ListView fx:id="likedSongsView" styleClass="playlist-view desktop-list" prefHeight="120" maxHeight="120" />
+                                <FlowPane hgap="8" vgap="8">
+                                    <Button text="Save Current" styleClass="desktop-action-chip" onAction="#handleToggleCurrentSongLiked" />
+                                    <Button text="Remove Saved" styleClass="desktop-action-chip" onAction="#handleRemoveLikedSong" />
+                                    <Button text="Add Related Songs" styleClass="desktop-action-chip" onAction="#handleAddRelatedSongs" />
+                                    <Button text="Auto Radio" styleClass="desktop-action-chip" onAction="#handleToggleAutoRadio" />
+                                    <Button fx:id="shuffleButton" text="Shuffle" styleClass="desktop-action-chip" onAction="#handleToggleShuffle" />
+                                    <Button fx:id="repeatButton" text="Repeat" styleClass="desktop-action-chip" onAction="#handleToggleRepeat" />
+                                    <Button fx:id="autoRadioButton" text="Radio" styleClass="desktop-action-chip" onAction="#handleToggleAutoRadio" visible="false" managed="false" />
+                                </FlowPane>
                             </VBox>
                         </Tab>
                     </tabs>
@@ -202,19 +213,10 @@
                 </HBox>
 
                 <HBox alignment="CENTER" spacing="16">
-                    <Button fx:id="shuffleButton" text="Mix" styleClass="icon-button"
-                            onAction="#handleToggleShuffle" />
-
-                    <Button fx:id="autoRadioButton" text="Auto" styleClass="icon-button"
-                            onAction="#handleToggleAutoRadio" />
-
                     <Button text="|&lt;" styleClass="icon-button" onAction="#handlePrevious" />
                     <Button fx:id="playPauseButton" text="|>" styleClass="play-pause-button"
                             onAction="#handlePlayPause" />
                     <Button text="&gt;|" styleClass="icon-button" onAction="#handleNext" />
-
-                    <Button fx:id="repeatButton" text="Loop" styleClass="icon-button"
-                            onAction="#handleToggleRepeat" />
 
                     <HBox HBox.hgrow="ALWAYS" />
 
