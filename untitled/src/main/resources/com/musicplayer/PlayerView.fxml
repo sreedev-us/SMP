@@ -140,15 +140,6 @@
                             </VBox>
 
                             <VBox styleClass="lyrics-card desktop-panel-card" spacing="16" HBox.hgrow="ALWAYS">
-                                <VBox spacing="10">
-                                    <HBox alignment="CENTER_LEFT" spacing="10">
-                                        <Label text="FOR THIS TRACK" styleClass="lyrics-section-label" />
-                                        <Region HBox.hgrow="ALWAYS" />
-                                        <Button text="Refresh Radio" styleClass="control-button" onAction="#handleAddRelatedSongs" />
-                                    </HBox>
-                                    <Label fx:id="desktopRecommendationSummaryLabel" text="Recommendations appear here when a track is playing." styleClass="user-info-label" wrapText="true" />
-                                    <ListView fx:id="desktopRecommendationsList" styleClass="playlist-view desktop-list" prefHeight="170" maxHeight="170" />
-                                </VBox>
                                 <HBox alignment="CENTER_LEFT" spacing="10">
                                     <Label text="LIVE LYRICS" styleClass="lyrics-section-label" />
                                     <Region HBox.hgrow="ALWAYS" />
@@ -202,35 +193,23 @@
         </center>
 
         <bottom>
-            <VBox styleClass="player-controls" alignment="CENTER" spacing="12">
+            <VBox styleClass="player-controls desktop-bottom-shell" alignment="CENTER" spacing="10">
                 <padding><Insets top="14" bottom="18" left="28" right="28" /></padding>
 
-                <HBox fx:id="desktopMiniPlayerBar" styleClass="desktop-mini-player-bar" alignment="CENTER_LEFT" spacing="12"
+                <VBox fx:id="desktopMiniPlayerBar" styleClass="desktop-mini-player-bar" alignment="CENTER_LEFT" spacing="8"
                       visible="false" managed="false" onMouseClicked="#handleOpenDesktopSongDetails">
-                    <Label text="Now Playing" styleClass="lyrics-section-label" />
-                    <VBox spacing="2" HBox.hgrow="ALWAYS">
-                        <Label fx:id="desktopMiniPlayerTitleLabel" text="No song selected" styleClass="desktop-mini-player-title" />
-                        <Label fx:id="desktopMiniPlayerArtistLabel" text="Tap to open song details" styleClass="desktop-mini-player-artist" />
-                    </VBox>
-                </HBox>
-
-                <HBox alignment="CENTER" spacing="12">
-                    <Label fx:id="currentTimeLabel" text="0:00" styleClass="time-label" />
-                    <Slider fx:id="progressSlider" styleClass="progress-slider" HBox.hgrow="ALWAYS" />
-                    <Label fx:id="totalTimeLabel" text="0:00" styleClass="time-label" />
-                </HBox>
-
-                <HBox alignment="CENTER" spacing="16">
-                    <Button text="|&lt;" styleClass="icon-button" onAction="#handlePrevious" />
-                    <Button fx:id="playPauseButton" text="|>" styleClass="play-pause-button"
-                            onAction="#handlePlayPause" />
-                    <Button text="&gt;|" styleClass="icon-button" onAction="#handleNext" />
-
-                    <HBox HBox.hgrow="ALWAYS" />
-
-                    <Label text="Volume" styleClass="volume-icon" />
-                    <Slider fx:id="volumeSlider" styleClass="volume-slider" prefWidth="130" />
-                </HBox>
+                    <ProgressBar fx:id="miniProgressLine" progress="0.0" prefHeight="2" maxWidth="1.7976931348623157E308" styleClass="mini-progress-line desktop-mini-progress-line" />
+                    <HBox alignment="CENTER_LEFT" spacing="12">
+                        <Label text="Now Playing" styleClass="lyrics-section-label" />
+                        <VBox spacing="2" HBox.hgrow="ALWAYS">
+                            <Label fx:id="desktopMiniPlayerTitleLabel" text="No song selected" styleClass="desktop-mini-player-title" />
+                            <Label fx:id="desktopMiniPlayerArtistLabel" text="Tap to open song details" styleClass="desktop-mini-player-artist" />
+                        </VBox>
+                        <Button text="|&lt;" styleClass="desktop-mini-control-button" onAction="#handlePrevious" onMouseClicked="#handleConsumeOverlayClick" />
+                        <Button fx:id="playPauseButton" text="|>" styleClass="desktop-mini-play-button" onAction="#handlePlayPause" onMouseClicked="#handleConsumeOverlayClick" />
+                        <Button text="&gt;|" styleClass="desktop-mini-control-button" onAction="#handleNext" onMouseClicked="#handleConsumeOverlayClick" />
+                    </HBox>
+                </VBox>
 
                 <Label fx:id="statusLabel" text="Welcome to Harmony Pro!"
                        styleClass="status-label" />

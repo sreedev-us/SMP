@@ -38,15 +38,12 @@ public class YtDlpStreamResolver {
             throw new IllegalArgumentException("Missing YouTube video ID");
         }
 
-        // If on mobile, prefer streaming URL directly to avoid slow downloads & permission issues
-        if (AppPlatform.isMobile()) {
-            try {
-                return resolveStreamUrl(videoId);
-            } catch (Throwable e) {
-                System.err.println("--- RESOLVER CRITICAL THROWABLE ---");
-                e.printStackTrace();
-                System.err.println("Direct streaming resolution failed, falling back to download: " + e.getMessage());
-            }
+        // Prefer direct/native stream resolution first on every platform. It avoids
+        // the frequent yt-dlp 429/bot-check path and is much snappier when it works.
+        try {
+            return resolveStreamUrl(videoId);
+        } catch (Throwable e) {
+            System.err.println("Direct streaming resolution failed, trying download fallbacks: " + e.getMessage());
         }
 
         if (tempDir == null || !tempDir.toFile().exists()) {
@@ -60,15 +57,21 @@ public class YtDlpStreamResolver {
             return outputFile.getAbsolutePath();
         }
 
+        try {
+            return resolveWithJavaDownloader(videoId, outputFile);
+        } catch (Exception javaFailure) {
+            System.err.println("Native Java downloader failed, falling back to yt-dlp: " + javaFailure.getMessage());
+        }
+
         if (isAvailable()) {
             try {
                 return resolveWithYtDlp(videoId, outputFile);
             } catch (Exception ytDlpFailure) {
-                System.err.println("yt-dlp resolver failed, falling back to Java downloader: " + ytDlpFailure.getMessage());
+                System.err.println("yt-dlp resolver failed after native fallback: " + ytDlpFailure.getMessage());
             }
         }
 
-        return resolveWithJavaDownloader(videoId, outputFile);
+        throw new RuntimeException("Could not resolve playable audio for this YouTube track right now.");
     }
 
     public static String resolveStreamUrl(String videoId) throws Exception {

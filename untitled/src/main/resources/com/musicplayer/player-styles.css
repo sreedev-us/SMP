@@ -456,7 +456,7 @@
     -fx-background-radius: 20;
     -fx-border-color: rgba(80, 227, 194, 0.16);
     -fx-border-radius: 20;
-    -fx-padding: 12 16;
+    -fx-padding: 10 14 12 14;
     -fx-cursor: hand;
 }
 
@@ -469,6 +469,49 @@
 .desktop-mini-player-artist {
     -fx-text-fill: #9bb2c9;
     -fx-font-size: 11px;
+}
+
+.desktop-bottom-shell {
+    -fx-background-color: transparent;
+}
+
+.desktop-mini-progress-line {
+    -fx-pref-height: 2px;
+    -fx-min-height: 2px;
+    -fx-max-height: 2px;
+}
+
+.desktop-mini-progress-line .track {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-radius: 999;
+}
+
+.desktop-mini-progress-line .bar {
+    -fx-background-color: #2d8cff;
+    -fx-background-radius: 999;
+}
+
+.desktop-mini-control-button,
+.desktop-mini-play-button {
+    -fx-background-color: rgba(255, 255, 255, 0.07);
+    -fx-text-fill: #f6fbff;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-cursor: hand;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 9 12;
+}
+
+.desktop-mini-play-button {
+    -fx-background-color: linear-gradient(to bottom right, #2d8cff, #50e3c2);
+    -fx-text-fill: #04111f;
+    -fx-padding: 10 16;
+}
+
+.desktop-mini-control-button:hover,
+.desktop-mini-play-button:hover {
+    -fx-opacity: 0.92;
 }
 
 .mobile-top-shell {
