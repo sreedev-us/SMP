@@ -91,69 +91,61 @@ public class GoogleAuthentication implements AuthSystem {
     @Override
     public boolean googleLogin() {
         lastErrorMessage = "";
-        boolean retriedFreshSignIn = false;
-        while (true) {
-            try {
-                GoogleAuthorizationCodeFlow flow = buildAuthorizationFlow();
-                this.credential = authorizeWithFreshFallback(flow);
-                if (this.credential == null || !ensureFreshAccessToken()) {
+        try {
+            GoogleAuthorizationCodeFlow flow = buildAuthorizationFlow();
+            this.credential = authorizeWithFreshFallback(flow);
+            if (this.credential == null || !ensureFreshAccessToken()) {
+                if (lastErrorMessage == null || lastErrorMessage.isBlank()) {
                     lastErrorMessage = "Google sign-in did not return a usable token.";
-                    return false;
                 }
-
-                String accessToken = credential.getAccessToken();
-                URL url = new URL("https://www.googleapis.com/oauth2/v3/userinfo");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestProperty("Authorization", "Bearer " + accessToken);
-                conn.connect();
-
-                int code = conn.getResponseCode();
-                if (code != 200) {
-                    if (code == 401) {
-                        System.err.println("401 Unauthorized at UserInfo. Clearing credentials...");
-                        clearStoredCredentialState();
-                    }
-
-                    InputStream es = conn.getErrorStream();
-                    if (es != null) {
-                        try (Scanner sc = new Scanner(es)) {
-                            sc.useDelimiter("\\A");
-                            String errorBody = sc.hasNext() ? sc.next() : "No error body";
-                            System.err.println("Google Auth Error Body: " + errorBody);
-                        }
-                    }
-                    throw new IOException("Google UserInfo failed with HTTP " + code);
-                }
-
-                String json;
-                try (Scanner sc = new Scanner(conn.getInputStream())) {
-                    sc.useDelimiter("\\A");
-                    json = sc.hasNext() ? sc.next() : "{}";
-                }
-
-                JSONObject userInfoJson = new JSONObject(json);
-                this.currentUser = userInfoJson.optString("name", "Unknown User");
-                this.currentEmail = userInfoJson.optString("email", "");
-                lastErrorMessage = "";
-                saveUsers();
-                return true;
-            } catch (Exception e) {
-                if (!retriedFreshSignIn) {
-                    retriedFreshSignIn = true;
-                    System.err.println("Google login failed once. Clearing cached auth state and retrying fresh sign-in...");
-                    clearStoredCredentialState();
-                    continue;
-                }
-
-                if (isRevokedTokenError(e)) {
-                    System.err.println("Google login detected a revoked or expired token. Clearing cached credentials.");
-                    clearStoredCredentialState();
-                }
-                lastErrorMessage = buildUserFacingError(e);
-                System.err.println("Google login error: " + e.getMessage());
-                e.printStackTrace();
                 return false;
             }
+
+            String accessToken = credential.getAccessToken();
+            URL url = new URL("https://www.googleapis.com/oauth2/v3/userinfo");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+            conn.connect();
+
+            int code = conn.getResponseCode();
+            if (code != 200) {
+                if (code == 401) {
+                    System.err.println("401 Unauthorized at UserInfo. Clearing credentials...");
+                    clearStoredCredentialState();
+                }
+
+                InputStream es = conn.getErrorStream();
+                if (es != null) {
+                    try (Scanner sc = new Scanner(es)) {
+                        sc.useDelimiter("\\A");
+                        String errorBody = sc.hasNext() ? sc.next() : "No error body";
+                        System.err.println("Google Auth Error Body: " + errorBody);
+                    }
+                }
+                throw new IOException("Google UserInfo failed with HTTP " + code);
+            }
+
+            String json;
+            try (Scanner sc = new Scanner(conn.getInputStream())) {
+                sc.useDelimiter("\\A");
+                json = sc.hasNext() ? sc.next() : "{}";
+            }
+
+            JSONObject userInfoJson = new JSONObject(json);
+            this.currentUser = userInfoJson.optString("name", "Unknown User");
+            this.currentEmail = userInfoJson.optString("email", "");
+            lastErrorMessage = "";
+            saveUsers();
+            return true;
+        } catch (Exception e) {
+            if (isRevokedTokenError(e)) {
+                System.err.println("Google login detected a revoked or expired token. Clearing cached credentials.");
+                clearStoredCredentialState();
+            }
+            lastErrorMessage = buildUserFacingError(e);
+            System.err.println("Google login error: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
 
@@ -203,10 +195,10 @@ public class GoogleAuthentication implements AuthSystem {
                 if (!isRevokedTokenError(ex)) {
                     throw ex;
                 }
-                System.err.println("Stored Google refresh token expired or revoked. Starting a fresh sign-in...");
+                System.err.println("Stored Google refresh token expired or revoked. Clearing cached credentials.");
                 clearStoredCredentialState();
-                this.credential = authorizeWithFreshFallback(buildAuthorizationFlow());
-                return this.credential != null && ensureFreshAccessToken();
+                lastErrorMessage = "Your previous Google token expired. Please try Google sign-in again.";
+                return false;
             }
         }
         return credential.getAccessToken() != null;
