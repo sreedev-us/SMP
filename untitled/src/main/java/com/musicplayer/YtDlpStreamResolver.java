@@ -27,7 +27,9 @@ import java.util.concurrent.TimeUnit;
 public class YtDlpStreamResolver {
 
     private static final int TIMEOUT_SECONDS = 120;
-    private static Path tempDir = null;
+    private static final Path CACHE_DIR = Path.of(
+        System.getProperty("user.home"),
+        ".harmony-pro-audio-cache");
     private static final Config downloaderConfig = new Config.Builder()
         .maxRetries(10)
         .header("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")
@@ -47,15 +49,17 @@ public class YtDlpStreamResolver {
             System.err.println("Direct streaming resolution failed, trying download fallbacks: " + e.getMessage());
         }
 
-        if (tempDir == null || !tempDir.toFile().exists()) {
-            tempDir = Files.createTempDirectory("harmony-audio-");
-            tempDir.toFile().deleteOnExit();
-        }
+        ensureCacheDirectory();
 
-        File outputFile = tempDir.resolve(videoId + ".m4a").toFile();
+        File outputFile = CACHE_DIR.resolve(videoId + ".m4a").toFile();
         if (outputFile.exists() && outputFile.length() > 10_000) {
             System.out.println("Using cached audio: " + outputFile.getAbsolutePath());
             return outputFile.getAbsolutePath();
+        }
+        File cachedMp4 = CACHE_DIR.resolve(videoId + ".mp4").toFile();
+        if (cachedMp4.exists() && cachedMp4.length() > 10_000) {
+            System.out.println("Using cached audio: " + cachedMp4.getAbsolutePath());
+            return cachedMp4.getAbsolutePath();
         }
 
         try {
@@ -139,17 +143,17 @@ public class YtDlpStreamResolver {
     }
 
     private static String resolveWithYtDlp(String videoId, File outputFile) throws Exception {
-        File partFile = tempDir.resolve(videoId + ".m4a.part").toFile();
+        File partFile = CACHE_DIR.resolve(videoId + ".m4a.part").toFile();
         if (partFile.exists()) {
             partFile.delete();
         }
-        File webmFile = tempDir.resolve(videoId + ".webm").toFile();
+        File webmFile = CACHE_DIR.resolve(videoId + ".webm").toFile();
         if (webmFile.exists() && webmFile.length() < 100_000) {
             webmFile.delete();
         }
 
         String videoUrl = "https://www.youtube.com/watch?v=" + videoId;
-        String outputTemplate = tempDir.resolve(videoId + ".%(ext)s").toString();
+        String outputTemplate = CACHE_DIR.resolve(videoId + ".%(ext)s").toString();
         Exception lastFailure = null;
         for (List<String> cookieArgs : buildCookieStrategies()) {
             cleanupPartialDownloads(outputFile, videoId);
@@ -221,7 +225,7 @@ public class YtDlpStreamResolver {
             return outputFile.getAbsolutePath();
         }
 
-        File mp4File = tempDir.resolve(videoId + ".mp4").toFile();
+        File mp4File = CACHE_DIR.resolve(videoId + ".mp4").toFile();
         if (mp4File.exists() && mp4File.length() > 10_000) {
             System.out.println("Download complete (mp4): " + mp4File.getName());
             return mp4File.getAbsolutePath();
@@ -254,10 +258,16 @@ public class YtDlpStreamResolver {
             outputFile.delete();
         }
         for (String ext : List.of("mp4", "webm", "m4a", "part")) {
-            File candidate = tempDir.resolve(videoId + "." + ext).toFile();
+            File candidate = CACHE_DIR.resolve(videoId + "." + ext).toFile();
             if (candidate.exists() && candidate.length() < 10_000) {
                 candidate.delete();
             }
+        }
+    }
+
+    private static void ensureCacheDirectory() throws Exception {
+        if (!Files.exists(CACHE_DIR)) {
+            Files.createDirectories(CACHE_DIR);
         }
     }
 
@@ -352,15 +362,19 @@ public class YtDlpStreamResolver {
     }
 
     public static void cleanup() {
-        if (tempDir != null) {
-            File dir = tempDir.toFile();
-            File[] files = dir.listFiles();
-            if (files != null) {
-                for (File file : files) {
+        try {
+            ensureCacheDirectory();
+            File[] files = CACHE_DIR.toFile().listFiles();
+            if (files == null) {
+                return;
+            }
+            for (File file : files) {
+                if (file.getName().endsWith(".part") || file.length() < 10_000) {
                     file.delete();
                 }
             }
-            dir.delete();
+        } catch (Exception e) {
+            System.err.println("Audio cache cleanup skipped: " + e.getMessage());
         }
     }
 }
