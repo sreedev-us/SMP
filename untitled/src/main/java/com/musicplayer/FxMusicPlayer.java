@@ -1573,12 +1573,13 @@ public class FxMusicPlayer {
             return;
         }
 
-        boolean exists = songs.stream().anyMatch(existing -> isSameSong(existing, song));
+        SongData targetSong = song;
+        boolean exists = songs.stream().anyMatch(existing -> isSameSong(existing, targetSong));
         if (!exists) {
-            songs.add(cloneSong(song));
+            songs.add(cloneSong(targetSong));
             saveCustomPlaylists();
             refreshDesktopCustomPlaylistSongs(playlistName);
-            updateStatus("Added to playlist \"" + playlistName + "\": " + song.getTitle());
+            updateStatus("Added to playlist \"" + playlistName + "\": " + targetSong.getTitle());
         } else {
             updateStatus("That song is already in \"" + playlistName + "\".");
         }
