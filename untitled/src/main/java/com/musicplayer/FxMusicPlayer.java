@@ -1008,12 +1008,15 @@ public class FxMusicPlayer {
         if (!isPlaybackRequestCurrent(playbackRequestId)) {
             return;
         }
-        if (song != null && error instanceof GuestPlaybackUnavailableException) {
+        if (song != null && (error instanceof GuestPlaybackUnavailableException || isGuestPlaybackRestricted(error))) {
             song.setGuestPlaybackBlocked(true);
-            song.setPlaybackIssue(error.getMessage());
+            String issue = error instanceof GuestPlaybackUnavailableException
+                ? error.getMessage()
+                : "This video can't be played right now in Guest Mode. Try another result or sign in for fuller playback access.";
+            song.setPlaybackIssue(issue);
             playlistView.refresh();
             searchResultsList.refresh();
-            updateStatus(error.getMessage());
+            updateStatus(issue);
             tryAdvanceAfterBlockedTrack(song);
             return;
         }
@@ -1024,6 +1027,28 @@ public class FxMusicPlayer {
         }
         updateStatus(msg);
         new Timeline(new KeyFrame(Duration.seconds(4), ev -> handleNext())).play();
+    }
+
+    private boolean isGuestPlaybackRestricted(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null) {
+                String normalized = message.toLowerCase();
+                if (normalized.contains("sign in to confirm you")
+                    || normalized.contains("you're not a bot")
+                    || normalized.contains("you?re not a bot")
+                    || normalized.contains("429")
+                    || normalized.contains("login_required")
+                    || normalized.contains("playabilitystatus")
+                    || normalized.contains("streamingdata not found")
+                    || normalized.contains("forbidden")) {
+                    return true;
+                }
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private String resolveOnlineStream(SongData song) throws Exception {
