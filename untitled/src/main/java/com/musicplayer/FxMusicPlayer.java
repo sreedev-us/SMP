@@ -60,7 +60,7 @@ public class FxMusicPlayer {
     @FXML private StackPane desktopHomePage;
     @FXML private StackPane desktopSearchPage;
     @FXML private StackPane desktopSongDetailsPage;
-    @FXML private HBox desktopMiniPlayerBar;
+    @FXML private VBox desktopMiniPlayerBar;
     @FXML private Label desktopMiniPlayerTitleLabel;
     @FXML private Label desktopMiniPlayerArtistLabel;
     @FXML private VBox searchHistorySection;

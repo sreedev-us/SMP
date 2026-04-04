@@ -217,7 +217,14 @@ public class GoogleAuthentication implements AuthSystem {
         while (current != null) {
             if (current instanceof TokenResponseException tokenError) {
                 String message = tokenError.getMessage() == null ? "" : tokenError.getMessage().toLowerCase();
-                String details = tokenError.getDetails() == null ? "" : tokenError.getDetails().toPrettyString().toLowerCase();
+                String details = "";
+                if (tokenError.getDetails() != null) {
+                    try {
+                        details = tokenError.getDetails().toPrettyString().toLowerCase();
+                    } catch (IOException ignored) {
+                        details = String.valueOf(tokenError.getDetails()).toLowerCase();
+                    }
+                }
                 if (message.contains("invalid_grant") || message.contains("expired or revoked")
                         || details.contains("invalid_grant") || details.contains("expired or revoked")) {
                     return true;
