@@ -141,6 +141,8 @@ public class FxMusicPlayer {
     private final Map<String, SongData> webSearchIndex = new ConcurrentHashMap<>();
     private volatile String lastStatusMessage = "App Ready - Select a track";
     private long recommendationRequestSequence = 0;
+    private long playbackRequestSequence = 0;
+    private long activePlaybackRequestId = 0;
     private boolean mobileLibraryMode = false;
 
     public FxMusicPlayer(AuthSystem auth, SettingsManager settings) {
@@ -568,9 +570,16 @@ public class FxMusicPlayer {
     }
 
     private void setLoading(boolean loading) {
-        if (loadingIndicator != null) {
-            loadingIndicator.setVisible(loading);
-            loadingIndicator.setManaged(loading);
+        Runnable apply = () -> {
+            if (loadingIndicator != null) {
+                loadingIndicator.setVisible(loading);
+                loadingIndicator.setManaged(loading);
+            }
+        };
+        if (Platform.isFxApplicationThread()) {
+            apply.run();
+        } else {
+            Platform.runLater(apply);
         }
     }
 
@@ -602,18 +611,22 @@ public class FxMusicPlayer {
         // Fresh play
         audioPlayer.stop();
         SongData song = playlist.get(currentSongIndex);
+        long playbackRequestId = beginPlaybackRequest();
         updateStatus("PLAY: " + song.getTitle() + " [" + (song.getType() != null ? song.getType() : "unknown") + "]");
         updateNowPlaying(song);
 
         if ("local".equals(song.getType())) {
-            playLocal(song);
+            playLocal(song, playbackRequestId);
         } else {
-            playYouTube(song);
+            playYouTube(song, playbackRequestId);
         }
     }
 
-    private void playLocal(SongData song) {
+    private void playLocal(SongData song, long playbackRequestId) {
         try {
+            if (!isPlaybackRequestCurrent(playbackRequestId)) {
+                return;
+            }
             audioPlayer.play(song.getPath());
             onPlaybackStarted();
         } catch (Exception e) {
@@ -626,7 +639,7 @@ public class FxMusicPlayer {
      * Resolves the YouTube stream URL via yt-dlp (on a background thread)
      * then hands the URL to MediaPlayer.
      */
-    private void playYouTube(SongData song) {
+    private void playYouTube(SongData song, long playbackRequestId) {
         if (song.isGuestPlaybackBlocked()) {
             updateStatus(song.getPlaybackIssue() != null
                 ? song.getPlaybackIssue()
@@ -643,8 +656,11 @@ public class FxMusicPlayer {
             // 20-second Watchdog
             new Thread(() -> {
                 try { Thread.sleep(20000); } catch (Exception ignored) {}
-                if (!completed[0]) {
+                if (!completed[0] && isPlaybackRequestCurrent(playbackRequestId)) {
                     Platform.runLater(() -> {
+                        if (!isPlaybackRequestCurrent(playbackRequestId)) {
+                            return;
+                        }
                         setLoading(false);
                         updateStatus("Error: Resolution timed out for " + song.getTitle());
                     });
@@ -652,13 +668,24 @@ public class FxMusicPlayer {
             }, "resolver-watchdog").start();
 
             try {
-                Platform.runLater(() -> updateStatus("Resolving stream..."));
-                updateStatus("Watchdog: Started");
+                Platform.runLater(() -> {
+                    if (isPlaybackRequestCurrent(playbackRequestId)) {
+                        updateStatus("Resolving stream...");
+                    }
+                });
                 String streamUrl = resolveOnlineStream(song);
+                if (!isPlaybackRequestCurrent(playbackRequestId)) {
+                    completed[0] = true;
+                    return;
+                }
                 
                 System.out.println("DEBUG: Resolved stream URL: " + (streamUrl != null ? streamUrl.substring(0, Math.min(streamUrl.length(), 50)) : "null"));
 
                 Platform.runLater(() -> {
+                    if (!isPlaybackRequestCurrent(playbackRequestId)) {
+                        completed[0] = true;
+                        return;
+                    }
                     completed[0] = true;
                     setLoading(false);
                     try {
@@ -679,6 +706,9 @@ public class FxMusicPlayer {
             } catch (Throwable e) {
                 completed[0] = true;
                 Platform.runLater(() -> {
+                    if (!isPlaybackRequestCurrent(playbackRequestId)) {
+                        return;
+                    }
                     setLoading(false);
                     if (shouldUseOfficialYouTubePlayback()) {
                         // On Android guest mode, open YouTube immediately without
@@ -692,7 +722,7 @@ public class FxMusicPlayer {
                     String displayMsg = (rawMsg != null && rawMsg.length() > 120)
                         ? rawMsg.substring(0, 120) + "..." : rawMsg;
                     updateStatus("Stream error: " + displayMsg);
-                    handlePlaybackFailure(song, new Exception(e));
+                    handlePlaybackFailure(song, new Exception(e), playbackRequestId);
                 });
             }
         }, "ytdlp-resolver").start();
@@ -725,6 +755,7 @@ public class FxMusicPlayer {
     }
 
     private void stopMusic() {
+        invalidatePlaybackRequests();
         audioPlayer.stop();
         isPlaying = false;
         isPaused  = false;
@@ -839,6 +870,13 @@ public class FxMusicPlayer {
     }
 
     private void handlePlaybackFailure(SongData song, Exception error) {
+        handlePlaybackFailure(song, error, activePlaybackRequestId);
+    }
+
+    private void handlePlaybackFailure(SongData song, Exception error, long playbackRequestId) {
+        if (!isPlaybackRequestCurrent(playbackRequestId)) {
+            return;
+        }
         if (song != null && error instanceof GuestPlaybackUnavailableException) {
             song.setGuestPlaybackBlocked(true);
             song.setPlaybackIssue(error.getMessage());
@@ -1440,9 +1478,30 @@ public class FxMusicPlayer {
     //  Utility 
 
     public void updateStatus(String msg) {
-        lastStatusMessage = msg == null ? "" : msg;
-        if (statusLabel != null) statusLabel.setText(msg);
-        if (mobileSettingsStatusLabel != null) mobileSettingsStatusLabel.setText(msg);
+        String safeMessage = msg == null ? "" : msg;
+        lastStatusMessage = safeMessage;
+        Runnable apply = () -> {
+            if (statusLabel != null) statusLabel.setText(safeMessage);
+            if (mobileSettingsStatusLabel != null) mobileSettingsStatusLabel.setText(safeMessage);
+        };
+        if (Platform.isFxApplicationThread()) {
+            apply.run();
+        } else {
+            Platform.runLater(apply);
+        }
+    }
+
+    private long beginPlaybackRequest() {
+        activePlaybackRequestId = ++playbackRequestSequence;
+        return activePlaybackRequestId;
+    }
+
+    private void invalidatePlaybackRequests() {
+        activePlaybackRequestId = ++playbackRequestSequence;
+    }
+
+    private boolean isPlaybackRequestCurrent(long playbackRequestId) {
+        return playbackRequestId == activePlaybackRequestId;
     }
 
     private int indexOfSongInPlaylist(SongData target) {

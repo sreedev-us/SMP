@@ -320,6 +320,92 @@
     -fx-border-width: 1 0 0 0;
 }
 
+.desktop-sidebar {
+    -fx-background-color: rgba(9, 18, 30, 0.9);
+}
+
+.desktop-shell {
+    -fx-alignment: top-center;
+}
+
+.desktop-home-hero-card {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(18, 38, 34, 0.96), rgba(8, 21, 33, 0.96));
+    -fx-background-radius: 28;
+    -fx-border-color: rgba(80, 227, 194, 0.16);
+    -fx-border-radius: 28;
+    -fx-padding: 22;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 28, 0.18, 0, 10);
+}
+
+.desktop-home-title {
+    -fx-text-fill: white;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.desktop-home-copy {
+    -fx-text-fill: #b7cee2;
+    -fx-font-size: 13px;
+    -fx-line-spacing: 2px;
+}
+
+.desktop-home-primary-button {
+    -fx-background-color: linear-gradient(to right, #50e3c2, #ffd166);
+    -fx-text-fill: #07111d;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-background-radius: 18;
+    -fx-padding: 10 16;
+    -fx-cursor: hand;
+}
+
+.desktop-action-chip {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-text-fill: #f6fbff;
+    -fx-background-radius: 18;
+    -fx-padding: 9 14;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+}
+
+.desktop-action-chip:hover {
+    -fx-background-color: rgba(80, 227, 194, 0.18);
+}
+
+.desktop-action-danger {
+    -fx-text-fill: #ffd0c7;
+    -fx-background-color: rgba(255, 111, 97, 0.16);
+}
+
+.desktop-panel-card {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(16, 29, 47, 0.92), rgba(10, 18, 31, 0.86));
+    -fx-background-radius: 28;
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-border-radius: 28;
+    -fx-padding: 24;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 30, 0.16, 0, 8);
+}
+
+.desktop-now-playing-card {
+    -fx-min-width: 390;
+    -fx-max-width: 470;
+}
+
+.desktop-list .list-cell {
+    -fx-background-radius: 14;
+    -fx-padding: 11 12;
+}
+
+.desktop-inline-summary {
+    -fx-text-fill: #8fb0ca;
+    -fx-font-size: 11px;
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 18;
+    -fx-padding: 7 11;
+}
+
 .mobile-top-shell {
     -fx-padding: 10 0 0 0;
 }
